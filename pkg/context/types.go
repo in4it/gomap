@@ -5,7 +5,16 @@ import (
 	"bytes"
 )
 
-type MapFunction func(string) []string
+type RawInput []byte
+type RawOutput []byte
+
+type KeyValueStringInt struct {
+	Key   string
+	Value int
+}
+
+type FlatMapFunction func(RawInput) []RawOutput
+type MapFunction func(RawInput) RawOutput
 
 type Step interface {
 	do() error

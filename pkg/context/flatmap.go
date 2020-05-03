@@ -5,22 +5,22 @@ import (
 	"bytes"
 )
 
-type Map struct {
-	function MapFunction
+type FlatMap struct {
+	function FlatMapFunction
 	scanner  *bufio.Scanner
 	output   bytes.Buffer
 }
 
-func (c *Context) Map(fn MapFunction) *Context {
-	c.AddStep(newMap(fn))
+func (c *Context) FlatMap(fn FlatMapFunction) *Context {
+	c.AddStep(newFlatMap(fn))
 	return c
 }
-func newMap(fn MapFunction) *Map {
-	return &Map{
+func newFlatMap(fn FlatMapFunction) *FlatMap {
+	return &FlatMap{
 		function: fn,
 	}
 }
-func (m *Map) do() error {
+func (m *FlatMap) do() error {
 	for m.scanner.Scan() {
 		for _, output := range m.function(m.scanner.Bytes()) {
 			m.output.WriteString(string(output) + "\n")
@@ -33,11 +33,11 @@ func (m *Map) do() error {
 	return nil
 }
 
-func (m *Map) getOutput() bytes.Buffer {
+func (m *FlatMap) getOutput() bytes.Buffer {
 	return m.output
 }
 
-func (m *Map) setScanner(scanner *bufio.Scanner) {
+func (m *FlatMap) setScanner(scanner *bufio.Scanner) {
 	m.scanner = scanner
 
 }

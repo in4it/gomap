@@ -12,9 +12,10 @@ func TestMap(t *testing.T) {
 	var input bytes.Buffer
 
 	input.WriteString("this is a sentence\nthis is another sentence")
-	m := Map{
-		function: func(str string) []string {
-			return strings.Split(str, " ")
+	m := FlatMap{
+		function: func(str RawInput) []RawOutput {
+			return StringArrayToBytes(strings.Split(string(str), " "))
+
 		},
 		scanner: bufio.NewScanner(&input),
 	}
