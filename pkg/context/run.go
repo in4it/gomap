@@ -9,6 +9,10 @@ import (
 	"path/filepath"
 )
 
+type RunOutput struct {
+	Contexts []*Context
+}
+
 func (d *Context) isFileOrDirectory(name string) (bool, error) {
 	fi, err := os.Stat(name)
 	if err != nil {
@@ -24,8 +28,9 @@ func (d *Context) isFileOrDirectory(name string) (bool, error) {
 	return false, fmt.Errorf("File/Dir ormat not recognized")
 }
 
-func (c *Context) Run() *Context {
+func (c *Context) Run() *RunOutput {
 	var (
+		runOutput   *RunOutput
 		isDirectory bool
 		err         error
 		files       []os.FileInfo
@@ -33,34 +38,34 @@ func (c *Context) Run() *Context {
 	)
 	if isDirectory, err = c.isFileOrDirectory(c.input); err != nil {
 		c.err = err
-		return c
+		return runOutput
 	}
 	if isDirectory {
 		inputDir = c.input
 		files, err = ioutil.ReadDir(c.input)
 		if err != nil {
 			c.err = err
-			return c
+			return runOutput
 		}
 	} else {
 		inputDir = filepath.Dir(c.input)
 		fstat, err := os.Stat(c.input)
 		if err != nil {
 			c.err = err
-			return c
+			return runOutput
 		}
 		files = append(files, fstat)
 	}
 
-	var (
-		contexts []*Context
-	)
 	// TODO: run runFile as goroutine, use channels to communicate
-	for _, f := range files {
-		contexts = append(contexts, c.runFile(inputDir+"/"+f.Name()))
+	runOutput = &RunOutput{}
+	runOutput.Contexts = make([]*Context, len(files))
+	for k, f := range files {
+		runOutput.Contexts[k] = c
+		runOutput.Contexts[k].runFile(inputDir + "/" + f.Name())
 	}
 	// merge contexts and output one context
-	return contexts[0]
+	return runOutput
 }
 
 func (c *Context) runFile(filename string) *Context {
@@ -91,9 +96,13 @@ func (c *Context) runFile(filename string) *Context {
 	return c
 }
 
-func (c *Context) Print() {
-	scanner := bufio.NewScanner(&c.output)
-	for scanner.Scan() {
-		fmt.Println(scanner.Text())
+func (r *RunOutput) Print() {
+	for _, context := range r.Contexts {
+		go func() {
+			scanner := bufio.NewScanner(&context.output)
+			for scanner.Scan() {
+				fmt.Println(scanner.Text())
+			}
+		}()
 	}
 }
