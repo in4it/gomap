@@ -12,6 +12,7 @@ type ReduceByKey struct {
 	outputKey    bytes.Buffer
 	outputValue  bytes.Buffer
 	outputType   string
+	invoked      int
 }
 
 func (c *Context) ReduceByKey(fn ReduceByKeyFunction) *Context {
@@ -26,10 +27,12 @@ func newReduceByKey(fn ReduceByKeyFunction) *ReduceByKey {
 func (m *ReduceByKey) do() error {
 	m.outputType = "kv"
 	reduced := make(map[string][]byte)
+
 	for m.scannerKey.Scan() {
 		m.scannerValue.Scan()
 		key := m.scannerKey.Bytes()
 		value := m.scannerValue.Bytes()
+		m.invoked++
 		if reducedValue, ok := reduced[string(key)]; ok {
 			reduced[string(key)] = m.function(reducedValue, m.scannerValue.Bytes())
 		} else {
@@ -65,4 +68,9 @@ func (m *ReduceByKey) setScanner(scanner *bufio.Scanner) {
 func (m *ReduceByKey) setScannerKV(scannerKey, scannerValue *bufio.Scanner) {
 	m.scannerKey = scannerKey
 	m.scannerValue = scannerValue
+}
+func (m *ReduceByKey) getStats() Stats {
+	return Stats{
+		invoked: m.invoked,
+	}
 }

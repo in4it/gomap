@@ -104,18 +104,25 @@ func (c *Context) runFile(filename string) *Context {
 
 func (r *RunOutput) Print() {
 	for _, context := range r.Contexts {
-		go func() {
-			scanner := bufio.NewScanner(&context.output)
-			keyScanner := bufio.NewScanner(&context.outputKey)
-			valueScanner := bufio.NewScanner(&context.outputValue)
+		scanner := bufio.NewScanner(&context.output)
+		keyScanner := bufio.NewScanner(&context.outputKey)
+		valueScanner := bufio.NewScanner(&context.outputValue)
 
-			for scanner.Scan() {
-				fmt.Println(scanner.Text())
-			}
-			for keyScanner.Scan() {
-				valueScanner.Scan()
-				fmt.Println(keyScanner.Text() + "," + valueScanner.Text())
-			}
-		}()
+		for scanner.Scan() {
+			fmt.Println(scanner.Text())
+		}
+		if err := scanner.Err(); err != nil {
+			panic(err)
+		}
+		for keyScanner.Scan() {
+			valueScanner.Scan()
+			fmt.Println(keyScanner.Text() + "," + valueScanner.Text())
+		}
+		if err := keyScanner.Err(); err != nil {
+			panic(err)
+		}
+		if err := valueScanner.Err(); err != nil {
+			panic(err)
+		}
 	}
 }

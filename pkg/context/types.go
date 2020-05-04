@@ -20,6 +20,7 @@ type Step interface {
 	setScannerKV(scannerKey, scannerValue *bufio.Scanner)
 	getOutputKV() (bytes.Buffer, bytes.Buffer)
 	getOutputType() string
+	getStats() Stats
 }
 
 type Context struct {
@@ -31,4 +32,8 @@ type Context struct {
 	outputKey   bytes.Buffer
 	outputValue bytes.Buffer
 	outputType  string
+}
+
+type Stats struct {
+	invoked int
 }

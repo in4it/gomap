@@ -9,6 +9,7 @@ type Map struct {
 	function MapFunction
 	scanner  *bufio.Scanner
 	output   bytes.Buffer
+	invoked  int
 }
 
 func (c *Context) Map(fn MapFunction) *Context {
@@ -23,6 +24,7 @@ func newMap(fn MapFunction) *Map {
 func (m *Map) do() error {
 	for m.scanner.Scan() {
 		for _, output := range m.function(m.scanner.Bytes()) {
+			m.invoked++
 			m.output.WriteString(string(output) + "\n")
 		}
 	}
@@ -47,4 +49,10 @@ func (m *Map) setScanner(scanner *bufio.Scanner) {
 	m.scanner = scanner
 }
 func (m *Map) setScannerKV(scannerKey, scannerValue *bufio.Scanner) {
+}
+
+func (m *Map) getStats() Stats {
+	return Stats{
+		invoked: m.invoked,
+	}
 }

@@ -9,6 +9,7 @@ type FlatMap struct {
 	function FlatMapFunction
 	scanner  *bufio.Scanner
 	output   bytes.Buffer
+	invoked  int
 }
 
 func (c *Context) FlatMap(fn FlatMapFunction) *Context {
@@ -22,6 +23,7 @@ func newFlatMap(fn FlatMapFunction) *FlatMap {
 }
 func (m *FlatMap) do() error {
 	for m.scanner.Scan() {
+		m.invoked++
 		for _, output := range m.function(m.scanner.Bytes()) {
 			m.output.WriteString(string(output) + "\n")
 		}
@@ -47,4 +49,9 @@ func (m *FlatMap) setScanner(scanner *bufio.Scanner) {
 	m.scanner = scanner
 }
 func (m *FlatMap) setScannerKV(scannerKey, scannerValue *bufio.Scanner) {
+}
+func (m *FlatMap) getStats() Stats {
+	return Stats{
+		invoked: m.invoked,
+	}
 }

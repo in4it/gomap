@@ -12,6 +12,7 @@ type MapToKV struct {
 	outputKey   bytes.Buffer
 	outputValue bytes.Buffer
 	outputType  string
+	invoked     int
 }
 
 func (c *Context) MapToKV(fn MapToKVFunction) *Context {
@@ -26,6 +27,7 @@ func newMapToKV(fn MapToKVFunction) *MapToKV {
 func (m *MapToKV) do() error {
 	m.outputType = "kv"
 	for m.scanner.Scan() {
+		m.invoked++
 		key, value := m.function(m.scanner.Bytes())
 		m.outputKey.Write(append(key, []byte("\n")...))
 		m.outputValue.Write(append(value, []byte("\n")...))
@@ -52,4 +54,10 @@ func (m *MapToKV) setScanner(scanner *bufio.Scanner) {
 	m.scanner = scanner
 }
 func (m *MapToKV) setScannerKV(scannerKey, scannerValue *bufio.Scanner) {
+}
+
+func (m *MapToKV) getStats() Stats {
+	return Stats{
+		invoked: m.invoked,
+	}
 }
