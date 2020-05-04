@@ -8,13 +8,9 @@ import (
 type RawInput []byte
 type RawOutput []byte
 
-type KeyValueStringInt struct {
-	Key   string
-	Value int
-}
-
 type FlatMapFunction func(RawInput) []RawOutput
 type MapFunction func(RawInput) RawOutput
+type MapToKVFunction func(RawInput) (RawOutput, RawOutput)
 
 type Step interface {
 	do() error

@@ -19,12 +19,8 @@ func TestRunSingleFileKV(t *testing.T) {
 	c := NewContext()
 	c.read("testdata/sentences.txt").FlatMap(func(str RawInput) []RawOutput {
 		return StringArrayToBytes(strings.Split(string(str), " "))
-	}).Map(func(str RawInput) RawOutput {
-		kv := KeyValueStringInt{
-			Key:   string(str),
-			Value: 1,
-		}
-		return RawEncode(kv)
+	}).MapToKV(func(str RawInput) (RawOutput, RawOutput) {
+		return []byte(str), []byte("1")
 	}).Run().Print()
 	if c.err != nil {
 		t.Errorf("Error: %s", c.err)
