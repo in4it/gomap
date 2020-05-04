@@ -70,7 +70,9 @@ func (c *Context) Run() *RunOutput {
 
 func (c *Context) runFile(filename string) *Context {
 	var (
-		buffer bytes.Buffer
+		buffer      bytes.Buffer
+		bufferKey   bytes.Buffer
+		bufferValue bytes.Buffer
 	)
 
 	file, err := os.Open(filename)
@@ -85,14 +87,18 @@ func (c *Context) runFile(filename string) *Context {
 			step.setScanner(bufio.NewScanner(file))
 		} else {
 			step.setScanner(bufio.NewScanner(&buffer))
+			step.setScannerKV(bufio.NewScanner(&bufferKey), bufio.NewScanner(&bufferValue))
 		}
 		if err = step.do(); err != nil {
 			c.err = err
 			return c
 		}
 		buffer = step.getOutput()
+		bufferKey, bufferValue = step.getOutputKV()
 	}
 	c.output = buffer
+	c.outputKey = bufferKey
+	c.outputValue = bufferValue
 	return c
 }
 
@@ -100,8 +106,15 @@ func (r *RunOutput) Print() {
 	for _, context := range r.Contexts {
 		go func() {
 			scanner := bufio.NewScanner(&context.output)
+			keyScanner := bufio.NewScanner(&context.outputKey)
+			valueScanner := bufio.NewScanner(&context.outputValue)
+
 			for scanner.Scan() {
 				fmt.Println(scanner.Text())
+			}
+			for keyScanner.Scan() {
+				valueScanner.Scan()
+				fmt.Println(keyScanner.Text() + "," + valueScanner.Text())
 			}
 		}()
 	}

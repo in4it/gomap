@@ -36,8 +36,15 @@ func (m *Map) do() error {
 func (m *Map) getOutput() bytes.Buffer {
 	return m.output
 }
+func (m *Map) getOutputKV() (bytes.Buffer, bytes.Buffer) {
+	return bytes.Buffer{}, bytes.Buffer{}
+}
+func (m *Map) getOutputType() string {
+	return "value"
+}
 
 func (m *Map) setScanner(scanner *bufio.Scanner) {
 	m.scanner = scanner
-
+}
+func (m *Map) setScannerKV(scannerKey, scannerValue *bufio.Scanner) {
 }

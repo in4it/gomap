@@ -36,8 +36,15 @@ func (m *FlatMap) do() error {
 func (m *FlatMap) getOutput() bytes.Buffer {
 	return m.output
 }
+func (m *FlatMap) getOutputKV() (bytes.Buffer, bytes.Buffer) {
+	return bytes.Buffer{}, bytes.Buffer{}
+}
+func (m *FlatMap) getOutputType() string {
+	return "value"
+}
 
 func (m *FlatMap) setScanner(scanner *bufio.Scanner) {
 	m.scanner = scanner
-
+}
+func (m *FlatMap) setScannerKV(scannerKey, scannerValue *bufio.Scanner) {
 }
