@@ -14,7 +14,7 @@ type RunOutput struct {
 	Contexts []*Context
 }
 
-func (d *Context) isFileOrDirectory(name string) (bool, error) {
+func (c *Context) isFileOrDirectory(name string) (bool, error) {
 	fi, err := os.Stat(name)
 	if err != nil {
 		return false, err
@@ -31,12 +31,13 @@ func (d *Context) isFileOrDirectory(name string) (bool, error) {
 
 func (c *Context) Run() *RunOutput {
 	var (
-		runOutput   *RunOutput
-		isDirectory bool
-		err         error
-		files       []os.FileInfo
-		inputDir    string
-		wg          sync.WaitGroup
+		runOutput         *RunOutput
+		isDirectory       bool
+		err               error
+		files             []os.FileInfo
+		inputDir          string
+		wg                sync.WaitGroup
+		filenameToProcess []string
 	)
 	if isDirectory, err = c.isFileOrDirectory(c.input); err != nil {
 		c.err = err
@@ -61,12 +62,16 @@ func (c *Context) Run() *RunOutput {
 
 	runOutput = &RunOutput{}
 	runOutput.Contexts = make([]*Context, len(files))
+	filenameToProcess = make([]string, len(files))
 	for k, f := range files {
 		runOutput.Contexts[k] = c
+		filenameToProcess[k] = inputDir + "/" + f.Name()
+	}
+	for k := range runOutput.Contexts {
 		wg.Add(1)
 		go func(partition int, file string) {
-			runOutput.Contexts[partition].runFile(file, &wg)
-		}(k, inputDir+"/"+f.Name())
+			runOutput.Contexts[partition].runFile(file, &wg, runOutput.Contexts)
+		}(k, filenameToProcess[k])
 	}
 	// wait for completion of the contexts
 	wg.Wait()
@@ -74,7 +79,7 @@ func (c *Context) Run() *RunOutput {
 	return runOutput
 }
 
-func (c *Context) runFile(filename string, wg *sync.WaitGroup) *Context {
+func (c *Context) runFile(filename string, wg *sync.WaitGroup, contexts []*Context) *Context {
 	var (
 		buffer      bytes.Buffer
 		bufferKey   bytes.Buffer
