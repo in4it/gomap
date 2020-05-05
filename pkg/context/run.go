@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 type RunOutput struct {
@@ -35,6 +36,7 @@ func (c *Context) Run() *RunOutput {
 		err         error
 		files       []os.FileInfo
 		inputDir    string
+		wg          sync.WaitGroup
 	)
 	if isDirectory, err = c.isFileOrDirectory(c.input); err != nil {
 		c.err = err
@@ -57,23 +59,31 @@ func (c *Context) Run() *RunOutput {
 		files = append(files, fstat)
 	}
 
-	// TODO: run runFile as goroutine, use channels to communicate
 	runOutput = &RunOutput{}
 	runOutput.Contexts = make([]*Context, len(files))
 	for k, f := range files {
 		runOutput.Contexts[k] = c
-		runOutput.Contexts[k].runFile(inputDir + "/" + f.Name())
+		wg.Add(1)
+		go func(partition int, file string) {
+			runOutput.Contexts[partition].runFile(file, &wg)
+		}(k, inputDir+"/"+f.Name())
 	}
-	// merge contexts and output one context
+	// wait for completion of the contexts
+	wg.Wait()
+
 	return runOutput
 }
 
-func (c *Context) runFile(filename string) *Context {
+func (c *Context) runFile(filename string, wg *sync.WaitGroup) *Context {
 	var (
 		buffer      bytes.Buffer
 		bufferKey   bytes.Buffer
 		bufferValue bytes.Buffer
 	)
+
+	defer wg.Done()
+
+	fmt.Printf("runFile: %s\n", filename)
 
 	file, err := os.Open(filename)
 	if err != nil {
