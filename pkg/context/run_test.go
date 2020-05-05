@@ -6,8 +6,8 @@ import (
 )
 
 func TestRunSingleFile(t *testing.T) {
-	c := NewContext()
-	c.read("testdata/sentences.txt").FlatMap(func(str RawInput) []RawOutput {
+	c := New()
+	c.Read("testdata/sentences.txt").FlatMap(func(str RawInput) []RawOutput {
 		return StringArrayToBytes(strings.Split(string(str), " "))
 	}).Run().Print()
 	if c.err != nil {
@@ -16,8 +16,8 @@ func TestRunSingleFile(t *testing.T) {
 }
 
 func TestRunSingleFileKV(t *testing.T) {
-	c := NewContext()
-	c.read("testdata/constitution.txt").FlatMap(func(str RawInput) []RawOutput {
+	c := New()
+	c.Read("testdata/sentences.txt").FlatMap(func(str RawInput) []RawOutput {
 		return StringArrayToBytes(strings.Split(string(str), " "))
 	}).MapToKV(func(input RawInput) (RawOutput, RawOutput) {
 		return RawInputToRawOutput(input), StringToRawOutput("1")
@@ -30,8 +30,8 @@ func TestRunSingleFileKV(t *testing.T) {
 }
 
 func TestMultipleFiles(t *testing.T) {
-	c := NewContext()
-	c.read("testdata/multi-file-sentences").FlatMap(func(str RawInput) []RawOutput {
+	c := New()
+	c.Read("testdata/multi-file-sentences").FlatMap(func(str RawInput) []RawOutput {
 		return StringArrayToBytes(strings.Split(string(str), " "))
 	}).Run().Print()
 	if c.err != nil {

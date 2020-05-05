@@ -3,10 +3,12 @@ package context
 import (
 	"bufio"
 	"bytes"
+
+	"github.com/in4it/gomap/pkg/types"
 )
 
 type ReduceByKey struct {
-	function     ReduceByKeyFunction
+	function     types.ReduceByKeyFunction
 	scannerKey   *bufio.Scanner
 	scannerValue *bufio.Scanner
 	outputKey    bytes.Buffer
@@ -15,11 +17,11 @@ type ReduceByKey struct {
 	invoked      int
 }
 
-func (c *Context) ReduceByKey(fn ReduceByKeyFunction) *Context {
+func (c *Context) ReduceByKey(fn types.ReduceByKeyFunction) *Context {
 	c.AddStep(newReduceByKey(fn))
 	return c
 }
-func newReduceByKey(fn ReduceByKeyFunction) *ReduceByKey {
+func newReduceByKey(fn types.ReduceByKeyFunction) *ReduceByKey {
 	return &ReduceByKey{
 		function: fn,
 	}

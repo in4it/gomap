@@ -3,10 +3,12 @@ package context
 import (
 	"bufio"
 	"bytes"
+
+	"github.com/in4it/gomap/pkg/types"
 )
 
 type MapToKV struct {
-	function    MapToKVFunction
+	function    types.MapToKVFunction
 	scanner     *bufio.Scanner
 	output      bytes.Buffer
 	outputKey   bytes.Buffer
@@ -15,11 +17,11 @@ type MapToKV struct {
 	invoked     int
 }
 
-func (c *Context) MapToKV(fn MapToKVFunction) *Context {
+func (c *Context) MapToKV(fn types.MapToKVFunction) *Context {
 	c.AddStep(newMapToKV(fn))
 	return c
 }
-func newMapToKV(fn MapToKVFunction) *MapToKV {
+func newMapToKV(fn types.MapToKVFunction) *MapToKV {
 	return &MapToKV{
 		function: fn,
 	}

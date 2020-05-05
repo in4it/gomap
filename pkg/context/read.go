@@ -1,6 +1,6 @@
 package context
 
-func (d *Context) read(filename string) *Context {
+func (d *Context) Read(filename string) *Context {
 	d.input = filename
 	return d
 }

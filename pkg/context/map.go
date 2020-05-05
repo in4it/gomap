@@ -3,20 +3,22 @@ package context
 import (
 	"bufio"
 	"bytes"
+
+	"github.com/in4it/gomap/pkg/types"
 )
 
 type Map struct {
-	function MapFunction
+	function types.MapFunction
 	scanner  *bufio.Scanner
 	output   bytes.Buffer
 	invoked  int
 }
 
-func (c *Context) Map(fn MapFunction) *Context {
+func (c *Context) Map(fn types.MapFunction) *Context {
 	c.AddStep(newMap(fn))
 	return c
 }
-func newMap(fn MapFunction) *Map {
+func newMap(fn types.MapFunction) *Map {
 	return &Map{
 		function: fn,
 	}

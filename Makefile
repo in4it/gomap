@@ -1,4 +1,4 @@
-BINARY = gomap
+BINARY = wordcount
 GOARCH = amd64
 
 all: build-linux build-darwin

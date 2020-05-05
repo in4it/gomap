@@ -1,13 +1,15 @@
-package context
+package utils
 
 import (
 	"bytes"
 	"encoding/gob"
 	"strconv"
+
+	"github.com/in4it/gomap/pkg/types"
 )
 
-func StringArrayToBytes(input []string) []RawOutput {
-	output := make([]RawOutput, len(input))
+func StringArrayToBytes(input []string) []types.RawOutput {
+	output := make([]types.RawOutput, len(input))
 	for k, v := range input {
 		output[k] = []byte(v)
 	}
@@ -21,19 +23,19 @@ func RawEncode(input interface{}) []byte {
 	return ret.Bytes()
 }
 
-func RawInputToInt(input RawInput) int {
+func RawInputToInt(input types.RawInput) int {
 	res, err := strconv.Atoi(string(input))
 	if err != nil {
 		panic(err)
 	}
 	return res
 }
-func IntToRawOutput(input int) RawOutput {
+func IntToRawOutput(input int) types.RawOutput {
 	return []byte(strconv.Itoa(input))
 }
-func StringToRawOutput(input string) RawOutput {
+func StringToRawOutput(input string) types.RawOutput {
 	return []byte(input)
 }
-func RawInputToRawOutput(input []byte) RawOutput {
+func RawInputToRawOutput(input []byte) types.RawOutput {
 	return input
 }

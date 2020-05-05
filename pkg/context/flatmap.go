@@ -3,20 +3,22 @@ package context
 import (
 	"bufio"
 	"bytes"
+
+	"github.com/in4it/gomap/pkg/types"
 )
 
 type FlatMap struct {
-	function FlatMapFunction
+	function types.FlatMapFunction
 	scanner  *bufio.Scanner
 	output   bytes.Buffer
 	invoked  int
 }
 
-func (c *Context) FlatMap(fn FlatMapFunction) *Context {
+func (c *Context) FlatMap(fn types.FlatMapFunction) *Context {
 	c.AddStep(newFlatMap(fn))
 	return c
 }
-func newFlatMap(fn FlatMapFunction) *FlatMap {
+func newFlatMap(fn types.FlatMapFunction) *FlatMap {
 	return &FlatMap{
 		function: fn,
 	}
