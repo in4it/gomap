@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/in4it/gomap/pkg/types"
+	"github.com/in4it/gomap/pkg/utils"
 )
 
 func TestMap(t *testing.T) {
@@ -13,8 +16,8 @@ func TestMap(t *testing.T) {
 
 	input.WriteString("this is a sentence\nthis is another sentence")
 	m := FlatMap{
-		function: func(str RawInput) []RawOutput {
-			return StringArrayToBytes(strings.Split(string(str), " "))
+		function: func(str types.RawInput) []types.RawOutput {
+			return utils.StringArrayToBytes(strings.Split(string(str), " "))
 
 		},
 		scanner: bufio.NewScanner(&input),
