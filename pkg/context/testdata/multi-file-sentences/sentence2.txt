@@ -1,2 +1,2 @@
-this is another sentence in another file
+this is another sentence in another file (sentence2.txt)
 more sentences in another file

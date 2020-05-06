@@ -23,7 +23,7 @@ func newFlatMap(fn types.FlatMapFunction) *FlatMap {
 		function: fn,
 	}
 }
-func (m *FlatMap) do() error {
+func (m *FlatMap) do(partition, totalPartitions int) error {
 	for m.scanner.Scan() {
 		m.invoked++
 		for _, output := range m.function(m.scanner.Bytes()) {
@@ -52,8 +52,14 @@ func (m *FlatMap) setScanner(scanner *bufio.Scanner) {
 }
 func (m *FlatMap) setScannerKV(scannerKey, scannerValue *bufio.Scanner) {
 }
-func (m *FlatMap) getStats() Stats {
-	return Stats{
+func (m *FlatMap) getStats() StepStats {
+	return StepStats{
 		invoked: m.invoked,
 	}
+}
+func (m *FlatMap) getStepType() string {
+	return "flatmap"
+}
+func (m *FlatMap) getFunction() interface{} {
+	return m.function
 }

@@ -22,7 +22,7 @@ func TestMap(t *testing.T) {
 		},
 		scanner: bufio.NewScanner(&input),
 	}
-	if err := m.do(); err != nil {
+	if err := m.do(0, 1); err != nil {
 		t.Errorf("do() error: %s", err)
 		return
 	}

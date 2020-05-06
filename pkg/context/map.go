@@ -23,7 +23,7 @@ func newMap(fn types.MapFunction) *Map {
 		function: fn,
 	}
 }
-func (m *Map) do() error {
+func (m *Map) do(partition, totalPartitions int) error {
 	for m.scanner.Scan() {
 		for _, output := range m.function(m.scanner.Bytes()) {
 			m.invoked++
@@ -53,8 +53,15 @@ func (m *Map) setScanner(scanner *bufio.Scanner) {
 func (m *Map) setScannerKV(scannerKey, scannerValue *bufio.Scanner) {
 }
 
-func (m *Map) getStats() Stats {
-	return Stats{
+func (m *Map) getStats() StepStats {
+	return StepStats{
 		invoked: m.invoked,
 	}
+}
+func (m *Map) getStepType() string {
+	return "map"
+}
+
+func (m *Map) getFunction() interface{} {
+	return m.function
 }

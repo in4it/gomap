@@ -42,6 +42,6 @@ func TestMultipleFiles(t *testing.T) {
 		return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
 	}).Run().Print()
 	if c.err != nil {
-		t.Errorf("Error: %s", c.err)
+		t.Errorf("Error1: %s", c.err)
 	}
 }

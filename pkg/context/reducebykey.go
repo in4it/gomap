@@ -26,8 +26,11 @@ func newReduceByKey(fn types.ReduceByKeyFunction) *ReduceByKey {
 		function: fn,
 	}
 }
-func (m *ReduceByKey) do() error {
+func (m *ReduceByKey) do(partition, totalPartitions int) error {
 	m.outputType = "kv"
+	m.outputKey = bytes.Buffer{}
+	m.outputValue = bytes.Buffer{}
+
 	reduced := make(map[string][]byte)
 
 	for m.scannerKey.Scan() {
@@ -36,7 +39,8 @@ func (m *ReduceByKey) do() error {
 		value := m.scannerValue.Bytes()
 		m.invoked++
 		if reducedValue, ok := reduced[string(key)]; ok {
-			reduced[string(key)] = m.function(reducedValue, m.scannerValue.Bytes())
+			b := m.scannerValue.Bytes()
+			reduced[string(key)] = m.function(reducedValue, b)
 		} else {
 			reduced[string(key)] = value
 		}
@@ -71,8 +75,14 @@ func (m *ReduceByKey) setScannerKV(scannerKey, scannerValue *bufio.Scanner) {
 	m.scannerKey = scannerKey
 	m.scannerValue = scannerValue
 }
-func (m *ReduceByKey) getStats() Stats {
-	return Stats{
+func (m *ReduceByKey) getStats() StepStats {
+	return StepStats{
 		invoked: m.invoked,
 	}
+}
+func (m *ReduceByKey) getStepType() string {
+	return "reducebykey"
+}
+func (m *ReduceByKey) getFunction() interface{} {
+	return m.function
 }

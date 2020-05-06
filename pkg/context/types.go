@@ -5,16 +5,6 @@ import (
 	"bytes"
 )
 
-type Step interface {
-	do() error
-	getOutput() bytes.Buffer
-	setScanner(scanner *bufio.Scanner)
-	setScannerKV(scannerKey, scannerValue *bufio.Scanner)
-	getOutputKV() (bytes.Buffer, bytes.Buffer)
-	getOutputType() string
-	getStats() Stats
-}
-
 type Context struct {
 	config      string
 	err         error
@@ -26,6 +16,18 @@ type Context struct {
 	outputType  string
 }
 
-type Stats struct {
+type Step interface {
+	do(partition, totalPartitions int) error
+	getOutput() bytes.Buffer
+	setScanner(scanner *bufio.Scanner)
+	setScannerKV(scannerKey, scannerValue *bufio.Scanner)
+	getOutputKV() (bytes.Buffer, bytes.Buffer)
+	getOutputType() string
+	getStats() StepStats
+	getStepType() string
+	getFunction() interface{}
+}
+
+type StepStats struct {
 	invoked int
 }

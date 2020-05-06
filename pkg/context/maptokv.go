@@ -26,7 +26,7 @@ func newMapToKV(fn types.MapToKVFunction) *MapToKV {
 		function: fn,
 	}
 }
-func (m *MapToKV) do() error {
+func (m *MapToKV) do(partition, totalPartitions int) error {
 	m.outputType = "kv"
 	for m.scanner.Scan() {
 		m.invoked++
@@ -58,8 +58,14 @@ func (m *MapToKV) setScanner(scanner *bufio.Scanner) {
 func (m *MapToKV) setScannerKV(scannerKey, scannerValue *bufio.Scanner) {
 }
 
-func (m *MapToKV) getStats() Stats {
-	return Stats{
+func (m *MapToKV) getStats() StepStats {
+	return StepStats{
 		invoked: m.invoked,
 	}
+}
+func (m *MapToKV) getStepType() string {
+	return "maptokv"
+}
+func (m *MapToKV) getFunction() interface{} {
+	return m.function
 }
