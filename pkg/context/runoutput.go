@@ -33,3 +33,39 @@ func (r *RunOutput) Print() {
 		}
 	}
 }
+func (r *RunOutput) Get() string {
+	ret := ""
+	for _, context := range r.Contexts {
+		scanner := bufio.NewScanner(&context.output)
+
+		for scanner.Scan() {
+			ret += scanner.Text() + "\n"
+		}
+		if err := scanner.Err(); err != nil {
+			panic(err)
+		}
+	}
+	return ret
+}
+
+func (r *RunOutput) GetKV() (string, string) {
+	key := ""
+	value := ""
+	for _, context := range r.Contexts {
+		keyScanner := bufio.NewScanner(&context.outputKey)
+		valueScanner := bufio.NewScanner(&context.outputValue)
+
+		for keyScanner.Scan() {
+			valueScanner.Scan()
+			key += keyScanner.Text() + "\n"
+			value += valueScanner.Text() + "\n"
+		}
+		if err := keyScanner.Err(); err != nil {
+			panic(err)
+		}
+		if err := valueScanner.Err(); err != nil {
+			panic(err)
+		}
+	}
+	return key, value
+}

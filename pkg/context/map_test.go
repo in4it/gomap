@@ -3,7 +3,6 @@ package context
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -29,8 +28,14 @@ func TestMap(t *testing.T) {
 	output := m.getOutput()
 
 	scanner := bufio.NewScanner(&output)
+	res := ""
 	for scanner.Scan() {
-		fmt.Println(scanner.Text())
+		res += scanner.Text() + "\n"
 	}
 
+	expected := "this\nis\na\nsentence\nthis\nis\nanother\nsentence\n"
+
+	if res != expected {
+		t.Errorf("expected result is wrong: %s\nexepcted:%s\n", res, expected)
+	}
 }
