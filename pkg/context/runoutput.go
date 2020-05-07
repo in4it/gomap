@@ -3,6 +3,8 @@ package context
 import (
 	"bufio"
 	"fmt"
+
+	"github.com/in4it/gomap/pkg/types"
 )
 
 type RunOutput struct {
@@ -33,13 +35,13 @@ func (r *RunOutput) Print() {
 		}
 	}
 }
-func (r *RunOutput) Get() string {
-	ret := ""
+func (r *RunOutput) Get() []types.RawOutput {
+	ret := []types.RawOutput{}
 	for _, context := range r.Contexts {
 		scanner := bufio.NewScanner(&context.output)
 
 		for scanner.Scan() {
-			ret += scanner.Text() + "\n"
+			ret = append(ret, scanner.Bytes())
 		}
 		if err := scanner.Err(); err != nil {
 			panic(err)
@@ -48,17 +50,17 @@ func (r *RunOutput) Get() string {
 	return ret
 }
 
-func (r *RunOutput) GetKV() (string, string) {
-	key := ""
-	value := ""
+func (r *RunOutput) GetKV() ([]types.RawOutput, []types.RawOutput) {
+	keys := []types.RawOutput{}
+	values := []types.RawOutput{}
 	for _, context := range r.Contexts {
 		keyScanner := bufio.NewScanner(&context.outputKey)
 		valueScanner := bufio.NewScanner(&context.outputValue)
 
 		for keyScanner.Scan() {
 			valueScanner.Scan()
-			key += keyScanner.Text() + "\n"
-			value += valueScanner.Text() + "\n"
+			keys = append(keys, keyScanner.Bytes())
+			values = append(values, valueScanner.Bytes())
 		}
 		if err := keyScanner.Err(); err != nil {
 			panic(err)
@@ -67,5 +69,5 @@ func (r *RunOutput) GetKV() (string, string) {
 			panic(err)
 		}
 	}
-	return key, value
+	return keys, values
 }

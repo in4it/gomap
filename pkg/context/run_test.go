@@ -17,16 +17,26 @@ func TestRunSingleFile(t *testing.T) {
 	if c.err != nil {
 		t.Errorf("Error: %s", c.err)
 	}
-	expected := "this\nis\na\nsentence\nthis\nis\nanother\nsentence\n"
+	expected := "this\nis\na\nsentence\nthis\nis\nanother\nsentence"
 
-	if output != expected {
-		t.Errorf("wrong output: %s\nexpected: %s", output, expected)
+	for _, v1 := range strings.Split(expected, "\n") {
+		found := false
+		for _, v2 := range output {
+			if v1 == string(v2) {
+				found = true
+			}
+
+		}
+		if !found {
+			t.Errorf("Not found: %s", v1)
+			return
+		}
 	}
 }
 
 func TestRunSingleFileKV(t *testing.T) {
 	c := New()
-	outputKeys, _ := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
+	keys, values := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
 		return utils.StringArrayToBytes(strings.Split(string(str), " "))
 	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
@@ -37,18 +47,31 @@ func TestRunSingleFileKV(t *testing.T) {
 	if c.err != nil {
 		t.Errorf("Error: %s", c.err)
 	}
-	expectedKeys := "is\na\nsentence\nanother\nthis\n"
 
-	for _, v1 := range strings.Split(expectedKeys, "\n") {
+	output := make(map[string]string)
+
+	for k, key := range keys {
+		output[string(key)] = string(values[k])
+	}
+
+	expected := map[string]string{
+		"is":       "2",
+		"a":        "1",
+		"sentence": "2",
+		"another":  "1",
+		"this":     "2",
+	}
+
+	for k1, v1 := range expected {
 		found := false
-		for _, v2 := range strings.Split(outputKeys, "\n") {
-			if v1 == v2 {
+		for k2, v2 := range output {
+			if v1 == v2 && k1 == k2 {
 				found = true
 			}
 
 		}
 		if !found {
-			t.Errorf("Key not found: %s", v1)
+			t.Errorf("Not found: %s: %s", k1, v1)
 			return
 		}
 	}
@@ -57,14 +80,49 @@ func TestRunSingleFileKV(t *testing.T) {
 
 func TestMultipleFiles(t *testing.T) {
 	c := New()
-	c.Read("testdata/multi-file-sentences").FlatMap(func(str types.RawInput) []types.RawOutput {
+	keys, values := c.Read("testdata/multi-file-sentences").FlatMap(func(str types.RawInput) []types.RawOutput {
 		return utils.StringArrayToBytes(strings.Split(string(str), " "))
 	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
 	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
 		return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
-	}).Run().Print()
+	}).Run().GetKV()
 	if c.err != nil {
 		t.Errorf("Error1: %s", c.err)
+	}
+
+	output := make(map[string]string)
+
+	for k, key := range keys {
+		output[string(key)] = string(values[k])
+	}
+
+	expected := map[string]string{
+		"is":              "3",
+		"sentence":        "3",
+		"another":         "4",
+		"more":            "9",
+		"file":            "2",
+		"sentences":       "1",
+		"(sentence1.txt)": "1",
+		"(sentence2.txt)": "1",
+		"(sentence3.txt)": "1",
+		"this":            "3",
+		"a":               "1",
+		"in":              "2",
+	}
+
+	for k1, v1 := range expected {
+		found := false
+		for k2, v2 := range output {
+			if v1 == v2 && k1 == k2 {
+				found = true
+			}
+
+		}
+		if !found {
+			t.Errorf("Not found: %s: %s", k1, v1)
+			return
+		}
 	}
 }
