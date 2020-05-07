@@ -1,1 +1,3 @@
 /wordcount-*
+bigfile*.txt
+/output.txt

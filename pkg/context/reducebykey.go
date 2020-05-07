@@ -3,6 +3,7 @@ package context
 import (
 	"bufio"
 	"bytes"
+	"strings"
 
 	"github.com/in4it/gomap/pkg/types"
 )
@@ -42,7 +43,7 @@ func (m *ReduceByKey) do(partition, totalPartitions int) error {
 			b := m.scannerValue.Bytes()
 			reduced[string(key)] = m.function(reducedValue, b)
 		} else {
-			reduced[string(key)] = value
+			reduced[string(key)] = []byte(strings.TrimSuffix(string(value), "\n"))
 		}
 	}
 
