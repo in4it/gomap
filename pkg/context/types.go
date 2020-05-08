@@ -33,3 +33,9 @@ type Step interface {
 type StepStats struct {
 	invoked int
 }
+
+type fileToProcess struct {
+	filename string
+	fileType string
+	schema   interface{}
+}

@@ -1,6 +1,7 @@
 package context
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -127,30 +128,19 @@ func TestMultipleFiles(t *testing.T) {
 	}
 }
 
-/*
-
 func TestRunSingleParquetFile(t *testing.T) {
 	c := New()
-	output := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
-		return utils.StringArrayToBytes(strings.Split(string(str), " "))
+	type ParquetLine struct {
+		Word  string `parquet:"name=word, type=UTF8"`
+		Count int64  `parquet:"name=count, type=INT64"`
+	}
+
+	output := c.ReadParquet("testdata/words.parquet", ParquetLine{}).Map(func(input types.RawInput) types.RawOutput {
+		return utils.RawInputToRawOutput(input)
 	}).Run().Get()
 
 	if c.err != nil {
 		t.Errorf("Error: %s", c.err)
 	}
-	expected := "this\nis\na\nsentence\nthis\nis\nanother\nsentence"
-
-	for _, v1 := range strings.Split(expected, "\n") {
-		found := false
-		for _, v2 := range output {
-			if v1 == string(v2) {
-				found = true
-			}
-
-		}
-		if !found {
-			t.Errorf("Not found: %s", v1)
-			return
-		}
-	}
-}*/
+	fmt.Printf("Output: %s\n", output)
+}

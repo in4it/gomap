@@ -32,7 +32,7 @@ func (c *Context) isFileOrDirectory(name string) (bool, error) {
 	return false, fmt.Errorf("File/Dir ormat not recognized")
 }
 
-func (c *Context) getFiles() ([]os.FileInfo, string, error) {
+func (c *Context) getFiles() ([]os.FileInfo, string, string, interface{}, error) {
 	var (
 		isDirectory bool
 		err         error
@@ -40,23 +40,23 @@ func (c *Context) getFiles() ([]os.FileInfo, string, error) {
 		inputDir    string
 	)
 	if isDirectory, err = c.isFileOrDirectory(c.input); err != nil {
-		return files, inputDir, err
+		return files, inputDir, c.inputType, c.inputSchema, err
 	}
 	if isDirectory {
 		inputDir = c.input
 		files, err = ioutil.ReadDir(c.input)
 		if err != nil {
-			return files, inputDir, err
+			return files, inputDir, c.inputType, c.inputSchema, err
 		}
 	} else {
 		inputDir = filepath.Dir(c.input)
 		fstat, err := os.Stat(c.input)
 		if err != nil {
-			return files, inputDir, err
+			return files, inputDir, c.inputType, c.inputSchema, err
 		}
 		files = append(files, fstat)
 	}
-	return files, inputDir, nil
+	return files, inputDir, c.inputType, c.inputSchema, nil
 }
 
 func (c *Context) Run() *RunOutput {
@@ -64,11 +64,11 @@ func (c *Context) Run() *RunOutput {
 		runOutput         *RunOutput
 		waitForContext    sync.WaitGroup
 		waitForStep       sync.WaitGroup
-		filenameToProcess []string
+		filenameToProcess []fileToProcess
 	)
 
 	// get list of files
-	files, inputDir, err := c.getFiles()
+	files, inputDir, fileType, schema, err := c.getFiles()
 	if err != nil {
 		c.err = err
 		return runOutput
@@ -76,7 +76,7 @@ func (c *Context) Run() *RunOutput {
 	// initialize variables
 	runOutput = &RunOutput{}
 	runOutput.Contexts = make([]*Context, len(files))
-	filenameToProcess = make([]string, len(files))
+	filenameToProcess = make([]fileToProcess, len(files))
 
 	// loop over files, prepare to run different contexts in goroutines
 	for k, f := range files {
@@ -84,7 +84,7 @@ func (c *Context) Run() *RunOutput {
 			steps: copySteps(c.steps),
 			input: c.input,
 		}
-		filenameToProcess[k] = inputDir + "/" + f.Name()
+		filenameToProcess[k] = fileToProcess{filename: inputDir + "/" + f.Name(), fileType: fileType, schema: schema}
 		// add waiting points, so we can sync later in the execution of the step
 		for _, step := range c.steps {
 			if step.getStepType() == "reducebykey" {
@@ -94,7 +94,7 @@ func (c *Context) Run() *RunOutput {
 	}
 	for k := range runOutput.Contexts {
 		waitForContext.Add(1)
-		go func(partition int, file string) {
+		go func(partition int, file fileToProcess) {
 			runFile(partition, file, &waitForContext, &waitForStep, runOutput.Contexts)
 		}(k, filenameToProcess[k])
 	}
@@ -104,21 +104,22 @@ func (c *Context) Run() *RunOutput {
 	return runOutput
 }
 
-func runFile(partition int, filename string, waitForContext *sync.WaitGroup, waitForStep *sync.WaitGroup, contexts []*Context) {
+func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.WaitGroup, waitForStep *sync.WaitGroup, contexts []*Context) {
 	var (
 		buffer      bytes.Buffer
 		bufferKey   bytes.Buffer
 		bufferValue bytes.Buffer
-		file        *os.File
 		err         error
+		inputFile   *InputFile
 	)
 
 	defer waitForContext.Done()
 
 	for k, step := range contexts[partition].steps {
 		if k == 0 {
-			fmt.Printf("runFile: %s (partition %d)\n", filename, partition+1)
-			if file, err = initFile(step, filename); err != nil {
+			fmt.Printf("runFile: %s (partition %d)\n", fileToProcess.filename, partition+1)
+			inputFile = NewInputFile(step, fileToProcess)
+			if err = inputFile.InitFile(step); err != nil {
 				contexts[partition].err = err
 				return
 			}
@@ -131,7 +132,7 @@ func runFile(partition int, filename string, waitForContext *sync.WaitGroup, wai
 			return
 		}
 		// file can be closed now
-		closeFile(file)
+		inputFile.Close()
 		// gather input
 		buffer = step.getOutput()
 		bufferKey, bufferValue = step.getOutputKV()
@@ -156,18 +157,6 @@ func runFile(partition int, filename string, waitForContext *sync.WaitGroup, wai
 	contexts[partition].outputKey = bufferKey
 	contexts[partition].outputValue = bufferValue
 	return
-}
-
-func initFile(step Step, filename string) (*os.File, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return file, err
-	}
-	step.setScanner(bufio.NewScanner(file))
-	return file, nil
-}
-func closeFile(file *os.File) {
-	file.Close()
 }
 
 func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Context, step Step) error {
