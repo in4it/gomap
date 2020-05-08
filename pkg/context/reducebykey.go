@@ -1,7 +1,6 @@
 package context
 
 import (
-	"bufio"
 	"bytes"
 	"strings"
 
@@ -9,13 +8,12 @@ import (
 )
 
 type ReduceByKey struct {
-	function     types.ReduceByKeyFunction
-	scannerKey   *bufio.Scanner
-	scannerValue *bufio.Scanner
-	outputKey    bytes.Buffer
-	outputValue  bytes.Buffer
-	outputType   string
-	invoked      int
+	function    types.ReduceByKeyFunction
+	inputFile   *InputFile
+	outputKey   bytes.Buffer
+	outputValue bytes.Buffer
+	outputType  string
+	invoked     int
 }
 
 func (c *Context) ReduceByKey(fn types.ReduceByKeyFunction) *Context {
@@ -34,14 +32,11 @@ func (m *ReduceByKey) do(partition, totalPartitions int) error {
 
 	reduced := make(map[string][]byte)
 
-	for m.scannerKey.Scan() {
-		m.scannerValue.Scan()
-		key := m.scannerKey.Bytes()
-		value := m.scannerValue.Bytes()
+	for m.inputFile.Scan() {
+		key, value := m.inputFile.Bytes()
 		m.invoked++
 		if reducedValue, ok := reduced[string(key)]; ok {
-			b := m.scannerValue.Bytes()
-			reduced[string(key)] = m.function(reducedValue, b)
+			reduced[string(key)] = m.function(reducedValue, value)
 		} else {
 			reduced[string(key)] = []byte(strings.TrimSuffix(string(value), "\n"))
 		}
@@ -51,12 +46,12 @@ func (m *ReduceByKey) do(partition, totalPartitions int) error {
 		m.outputKey.Write([]byte(key + "\n"))
 		m.outputValue.Write(append(value, []byte("\n")...))
 	}
-
-	if err := m.scannerKey.Err(); err != nil {
-		return err
+	err1, err2 := m.inputFile.Err()
+	if err1 != nil {
+		return err1
 	}
-	if err := m.scannerValue.Err(); err != nil {
-		return err
+	if err2 != nil {
+		return err2
 	}
 	return nil
 }
@@ -70,12 +65,6 @@ func (m *ReduceByKey) getOutputKV() (bytes.Buffer, bytes.Buffer) {
 func (m *ReduceByKey) getOutputType() string {
 	return m.outputType
 }
-func (m *ReduceByKey) setScanner(scanner *bufio.Scanner) {
-}
-func (m *ReduceByKey) setScannerKV(scannerKey, scannerValue *bufio.Scanner) {
-	m.scannerKey = scannerKey
-	m.scannerValue = scannerValue
-}
 func (m *ReduceByKey) getStats() StepStats {
 	return StepStats{
 		invoked: m.invoked,
@@ -86,4 +75,7 @@ func (m *ReduceByKey) getStepType() string {
 }
 func (m *ReduceByKey) getFunction() interface{} {
 	return m.function
+}
+func (m *ReduceByKey) setInputFile(inputFile *InputFile) {
+	m.inputFile = inputFile
 }

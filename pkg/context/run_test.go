@@ -54,6 +54,7 @@ func TestRunSingleFileKV(t *testing.T) {
 	for k, key := range keys {
 		output[string(key)] = string(values[k])
 	}
+	fmt.Printf("%+v\n", output)
 
 	expected := map[string]string{
 		"is":       "2",

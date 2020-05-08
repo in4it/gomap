@@ -115,18 +115,17 @@ func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.Wa
 
 	defer waitForContext.Done()
 
-	for k, step := range contexts[partition].steps {
-		if k == 0 {
-			fmt.Printf("runFile: %s (partition %d)\n", fileToProcess.filename, partition+1)
-			inputFile = NewInputFile(step, fileToProcess)
-			if err = inputFile.InitFile(step); err != nil {
-				contexts[partition].err = err
-				return
-			}
-		} else {
-			step.setScanner(bufio.NewScanner(&buffer))
-			step.setScannerKV(bufio.NewScanner(&bufferKey), bufio.NewScanner(&bufferValue))
-		}
+	fmt.Printf("runFile: %s (partition %d)\n", fileToProcess.filename, partition+1)
+	inputFile = NewInputFile(fileToProcess)
+	if err = inputFile.InitFile(); err != nil {
+		contexts[partition].err = err
+		return
+	}
+	inputFile.currentType = "file"
+
+	for _, step := range contexts[partition].steps {
+		step.setInputFile(inputFile)
+
 		if err := step.do(partition, len(contexts)); err != nil {
 			contexts[partition].err = err
 			return
@@ -143,7 +142,7 @@ func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.Wa
 			contexts[partition].outputValue = bufferValue
 			bufferKey = bytes.Buffer{}
 			bufferValue = bytes.Buffer{}
-			if err := handleReduceSync(partition, waitForStep, contexts, step); err != nil {
+			if err := handleReduceSync(partition, waitForStep, contexts, inputFile, step); err != nil {
 				contexts[partition].err = err
 				return
 			}
@@ -152,6 +151,13 @@ func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.Wa
 			}
 			bufferKey, bufferValue = step.getOutputKV()
 		}
+		// set inputfile to new input for next step
+		inputFile.currentType = step.getOutputType()
+		if inputFile.currentType == "value" {
+			inputFile.SetScanner(bufio.NewScanner(&buffer))
+		} else {
+			inputFile.SetScannerKV(bufio.NewScanner(&bufferKey), bufio.NewScanner(&bufferValue))
+		}
 	}
 	contexts[partition].output = buffer
 	contexts[partition].outputKey = bufferKey
@@ -159,7 +165,7 @@ func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.Wa
 	return
 }
 
-func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Context, step Step) error {
+func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Context, inputFile *InputFile, step Step) error {
 	waitForStep.Done()
 	waitForStep.Wait()
 	var (
@@ -175,7 +181,7 @@ func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Co
 			contexts[k].outputValue = bytes.Buffer{}
 			contexts[k].output = bytes.Buffer{}
 		}
-		step.setScannerKV(bufio.NewScanner(&bufferKey), bufio.NewScanner(&bufferValue))
+		inputFile.SetScannerKV(bufio.NewScanner(&bufferKey), bufio.NewScanner(&bufferValue))
 		if err := step.do(partition, len(contexts)); err != nil {
 			return err
 		}

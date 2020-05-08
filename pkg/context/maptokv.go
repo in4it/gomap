@@ -10,6 +10,7 @@ import (
 type MapToKV struct {
 	function    types.MapToKVFunction
 	scanner     *bufio.Scanner
+	inputFile   *InputFile
 	output      bytes.Buffer
 	outputKey   bytes.Buffer
 	outputValue bytes.Buffer
@@ -28,14 +29,15 @@ func newMapToKV(fn types.MapToKVFunction) *MapToKV {
 }
 func (m *MapToKV) do(partition, totalPartitions int) error {
 	m.outputType = "kv"
-	for m.scanner.Scan() {
+	for m.inputFile.Scan() {
 		m.invoked++
-		key, value := m.function(m.scanner.Bytes())
+		_, inputValue := m.inputFile.Bytes()
+		key, value := m.function(inputValue)
 		m.outputKey.Write(append(key, []byte("\n")...))
 		m.outputValue.Write(append(value, []byte("\n")...))
 	}
 
-	if err := m.scanner.Err(); err != nil {
+	if _, err := m.inputFile.Err(); err != nil {
 		return err
 	}
 	return nil
@@ -68,4 +70,7 @@ func (m *MapToKV) getStepType() string {
 }
 func (m *MapToKV) getFunction() interface{} {
 	return m.function
+}
+func (m *MapToKV) setInputFile(inputFile *InputFile) {
+	m.inputFile = inputFile
 }
