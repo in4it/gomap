@@ -126,3 +126,31 @@ func TestMultipleFiles(t *testing.T) {
 		}
 	}
 }
+
+/*
+
+func TestRunSingleParquetFile(t *testing.T) {
+	c := New()
+	output := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
+		return utils.StringArrayToBytes(strings.Split(string(str), " "))
+	}).Run().Get()
+
+	if c.err != nil {
+		t.Errorf("Error: %s", c.err)
+	}
+	expected := "this\nis\na\nsentence\nthis\nis\nanother\nsentence"
+
+	for _, v1 := range strings.Split(expected, "\n") {
+		found := false
+		for _, v2 := range output {
+			if v1 == string(v2) {
+				found = true
+			}
+
+		}
+		if !found {
+			t.Errorf("Not found: %s", v1)
+			return
+		}
+	}
+}*/

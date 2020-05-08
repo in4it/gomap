@@ -9,6 +9,8 @@ type Context struct {
 	config      string
 	err         error
 	input       string
+	inputType   string
+	inputSchema interface{}
 	steps       []Step
 	output      bytes.Buffer
 	outputKey   bytes.Buffer
