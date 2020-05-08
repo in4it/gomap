@@ -6,6 +6,9 @@ import (
 	"os"
 	"strings"
 
+	//"net/http"
+	//_ "net/http/pprof"
+
 	"github.com/in4it/gomap/pkg/context"
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/in4it/gomap/pkg/utils"
@@ -14,11 +17,17 @@ import (
 func main() {
 	var (
 		input string
+		debug bool
 	)
 
 	flag.StringVar(&input, "input", "", "input file name")
+	flag.BoolVar(&debug, "debug", false, "debug on or off")
 
 	flag.Parse()
+
+	if debug {
+		//http.ListenAndServe("localhost:8080", nil)
+	}
 
 	if !fileExists(input) {
 		fmt.Printf("Input file doesn't exist: %s\n", input)
