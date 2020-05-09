@@ -12,7 +12,6 @@ type ReduceByKey struct {
 	inputFile   *InputFile
 	outputKey   bytes.Buffer
 	outputValue bytes.Buffer
-	outputType  string
 	invoked     int
 }
 
@@ -26,7 +25,6 @@ func newReduceByKey(fn types.ReduceByKeyFunction) *ReduceByKey {
 	}
 }
 func (m *ReduceByKey) do(partition, totalPartitions int) error {
-	m.outputType = "kv"
 	m.outputKey = bytes.Buffer{}
 	m.outputValue = bytes.Buffer{}
 
@@ -63,7 +61,7 @@ func (m *ReduceByKey) getOutputKV() (bytes.Buffer, bytes.Buffer) {
 	return m.outputKey, m.outputValue
 }
 func (m *ReduceByKey) getOutputType() string {
-	return m.outputType
+	return "kv"
 }
 func (m *ReduceByKey) getStats() StepStats {
 	return StepStats{

@@ -58,9 +58,7 @@ func (i *InputFile) Close() {
 func (i *InputFile) Scan() bool {
 	if i.currentType == "file" {
 		return i.fileScanner.Scan()
-	} else if i.currentType == "maptokv" {
-		return i.keyScanner.Scan() && i.valueScanner.Scan()
-	} else if i.currentType == "reducebykey" {
+	} else if i.currentType == "kv" {
 		return i.keyScanner.Scan() && i.valueScanner.Scan()
 	} else if i.currentType == "value" {
 		return i.valueScanner.Scan()

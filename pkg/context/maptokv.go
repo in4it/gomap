@@ -14,7 +14,6 @@ type MapToKV struct {
 	output      bytes.Buffer
 	outputKey   bytes.Buffer
 	outputValue bytes.Buffer
-	outputType  string
 	invoked     int
 }
 
@@ -28,7 +27,6 @@ func newMapToKV(fn types.MapToKVFunction) *MapToKV {
 	}
 }
 func (m *MapToKV) do(partition, totalPartitions int) error {
-	m.outputType = "kv"
 	for m.inputFile.Scan() {
 		m.invoked++
 		_, inputValue := m.inputFile.Bytes()
@@ -51,7 +49,7 @@ func (m *MapToKV) getOutputKV() (bytes.Buffer, bytes.Buffer) {
 	return m.outputKey, m.outputValue
 }
 func (m *MapToKV) getOutputType() string {
-	return m.outputType
+	return "kv"
 }
 
 func (m *MapToKV) setScanner(scanner *bufio.Scanner) {
