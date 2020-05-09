@@ -15,7 +15,7 @@ func TestMap(t *testing.T) {
 
 	input.WriteString("this is a sentence\nthis is another sentence")
 
-	inputFile := InputFile{
+	inputFile := Input{
 		currentType:  "value",
 		valueScanner: bufio.NewScanner(&input),
 	}

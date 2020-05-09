@@ -129,19 +129,51 @@ func TestMultipleFiles(t *testing.T) {
 	}
 }
 
+type ParquetLine struct {
+	Word  string `parquet:"name=word, type=UTF8"`
+	Count int64  `parquet:"name=count, type=INT64"`
+}
+
 func TestRunSingleParquetFile(t *testing.T) {
 	c := New()
-	type ParquetLine struct {
-		Word  string `parquet:"name=word, type=UTF8"`
-		Count int64  `parquet:"name=count, type=INT64"`
-	}
 
-	output := c.ReadParquet("testdata/words.parquet", ParquetLine{}).Map(func(input types.RawInput) types.RawOutput {
-		return utils.RawInputToRawOutput(input)
-	}).Run().Get()
+	keys, values := c.ReadParquet("testdata/words.parquet", new(ParquetLine)).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
+		var line ParquetLine
+		err := utils.UnmarshalRawInput(input, &line)
+		if err != nil {
+			panic(err)
+		}
+		return utils.StringToRawOutput(line.Word), utils.Int64ToRawOutput(line.Count)
+	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
+		return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
+	}).Run().GetKV()
 
 	if c.err != nil {
 		t.Errorf("Error: %s", c.err)
 	}
-	fmt.Printf("Output: %s\n", output)
+
+	output := make(map[string]string)
+
+	for k, key := range keys {
+		output[string(key)] = string(values[k])
+	}
+	expected := map[string]string{
+		"is":       "10",
+		"sentence": "2",
+		"a":        "26",
+		"this":     "6",
+	}
+	for k1, v1 := range expected {
+		found := false
+		for k2, v2 := range output {
+			if v1 == v2 && k1 == k2 {
+				found = true
+			}
+
+		}
+		if !found {
+			t.Errorf("Not found: %s: %s", k1, v1)
+			return
+		}
+	}
 }

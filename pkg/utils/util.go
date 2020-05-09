@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/in4it/gomap/pkg/types"
+	"github.com/vmihailenco/msgpack"
 )
 
 func StringArrayToBytes(input []string) []types.RawOutput {
@@ -33,9 +34,15 @@ func RawInputToInt(input types.RawInput) int {
 func IntToRawOutput(input int) types.RawOutput {
 	return []byte(strconv.Itoa(input))
 }
+func Int64ToRawOutput(input int64) types.RawOutput {
+	return []byte(strconv.FormatInt(input, 10))
+}
 func StringToRawOutput(input string) types.RawOutput {
 	return []byte(input)
 }
 func RawInputToRawOutput(input []byte) types.RawOutput {
 	return input
+}
+func UnmarshalRawInput(input []byte, item interface{}) error {
+	return msgpack.Unmarshal(input, &item)
 }

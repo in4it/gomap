@@ -101,6 +101,13 @@ func (c *Context) Run() *RunOutput {
 	// wait for completion of the contexts
 	waitForContext.Wait()
 
+	for _, contexts := range runOutput.Contexts {
+		if contexts.err != nil {
+			c.err = err
+			return runOutput
+		}
+	}
+
 	return runOutput
 }
 
@@ -110,21 +117,22 @@ func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.Wa
 		bufferKey   bytes.Buffer
 		bufferValue bytes.Buffer
 		err         error
-		inputFile   *InputFile
+		inputFile   *Input
 	)
 
 	defer waitForContext.Done()
 
 	fmt.Printf("runFile: %s (partition %d)\n", fileToProcess.filename, partition+1)
-	inputFile = NewInputFile(fileToProcess)
+	inputFile = NewInput(fileToProcess)
 	if err = inputFile.InitFile(); err != nil {
 		contexts[partition].err = err
+		// TODO: provide better error control
+		panic(err)
 		return
 	}
-	inputFile.currentType = "file"
 
 	for _, step := range contexts[partition].steps {
-		step.setInputFile(inputFile)
+		step.setInput(inputFile)
 
 		if err := step.do(partition, len(contexts)); err != nil {
 			contexts[partition].err = err
@@ -165,7 +173,7 @@ func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.Wa
 	return
 }
 
-func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Context, inputFile *InputFile, step Step) error {
+func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Context, inputFile *Input, step Step) error {
 	waitForStep.Done()
 	waitForStep.Wait()
 	var (

@@ -20,7 +20,7 @@ type Context struct {
 type Step interface {
 	do(partition, totalPartitions int) error
 	getOutput() bytes.Buffer
-	setInputFile(inputFile *InputFile)
+	setInput(inputFile *Input)
 	getOutputKV() (bytes.Buffer, bytes.Buffer)
 	getOutputType() string
 	getStats() StepStats

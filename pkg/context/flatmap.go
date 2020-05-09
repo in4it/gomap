@@ -8,7 +8,7 @@ import (
 
 type FlatMap struct {
 	function  types.FlatMapFunction
-	inputFile *InputFile
+	inputFile *Input
 	output    bytes.Buffer
 	invoked   int
 }
@@ -58,6 +58,6 @@ func (m *FlatMap) getStepType() string {
 func (m *FlatMap) getFunction() interface{} {
 	return m.function
 }
-func (m *FlatMap) setInputFile(inputFile *InputFile) {
+func (m *FlatMap) setInput(inputFile *Input) {
 	m.inputFile = inputFile
 }

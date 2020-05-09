@@ -8,7 +8,7 @@ import (
 
 type Map struct {
 	function  types.MapFunction
-	inputFile *InputFile
+	inputFile *Input
 	output    bytes.Buffer
 	invoked   int
 }
@@ -59,6 +59,6 @@ func (m *Map) getStepType() string {
 func (m *Map) getFunction() interface{} {
 	return m.function
 }
-func (m *Map) setInputFile(inputFile *InputFile) {
+func (m *Map) setInput(inputFile *Input) {
 	m.inputFile = inputFile
 }

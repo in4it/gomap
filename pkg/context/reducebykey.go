@@ -9,7 +9,7 @@ import (
 
 type ReduceByKey struct {
 	function    types.ReduceByKeyFunction
-	inputFile   *InputFile
+	inputFile   *Input
 	outputKey   bytes.Buffer
 	outputValue bytes.Buffer
 	invoked     int
@@ -74,6 +74,6 @@ func (m *ReduceByKey) getStepType() string {
 func (m *ReduceByKey) getFunction() interface{} {
 	return m.function
 }
-func (m *ReduceByKey) setInputFile(inputFile *InputFile) {
+func (m *ReduceByKey) setInput(inputFile *Input) {
 	m.inputFile = inputFile
 }

@@ -10,7 +10,7 @@ import (
 type MapToKV struct {
 	function    types.MapToKVFunction
 	scanner     *bufio.Scanner
-	inputFile   *InputFile
+	inputFile   *Input
 	output      bytes.Buffer
 	outputKey   bytes.Buffer
 	outputValue bytes.Buffer
@@ -69,6 +69,6 @@ func (m *MapToKV) getStepType() string {
 func (m *MapToKV) getFunction() interface{} {
 	return m.function
 }
-func (m *MapToKV) setInputFile(inputFile *InputFile) {
+func (m *MapToKV) setInput(inputFile *Input) {
 	m.inputFile = inputFile
 }
