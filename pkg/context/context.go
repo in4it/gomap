@@ -32,47 +32,59 @@ func (c *Context) isFileOrDirectory(name string) (bool, error) {
 	return false, fmt.Errorf("File/Dir ormat not recognized")
 }
 
-func (c *Context) Run() *RunOutput {
+func (c *Context) getFiles() ([]os.FileInfo, string, string, interface{}, error) {
 	var (
-		runOutput         *RunOutput
-		isDirectory       bool
-		err               error
-		files             []os.FileInfo
-		inputDir          string
-		waitForContext    sync.WaitGroup
-		waitForStep       sync.WaitGroup
-		filenameToProcess []string
+		isDirectory bool
+		err         error
+		files       []os.FileInfo
+		inputDir    string
 	)
 	if isDirectory, err = c.isFileOrDirectory(c.input); err != nil {
-		c.err = err
-		return runOutput
+		return files, inputDir, c.inputType, c.inputSchema, err
 	}
 	if isDirectory {
 		inputDir = c.input
 		files, err = ioutil.ReadDir(c.input)
 		if err != nil {
-			c.err = err
-			return runOutput
+			return files, inputDir, c.inputType, c.inputSchema, err
 		}
 	} else {
 		inputDir = filepath.Dir(c.input)
 		fstat, err := os.Stat(c.input)
 		if err != nil {
-			c.err = err
-			return runOutput
+			return files, inputDir, c.inputType, c.inputSchema, err
 		}
 		files = append(files, fstat)
 	}
+	return files, inputDir, c.inputType, c.inputSchema, nil
+}
 
+func (c *Context) Run() *RunOutput {
+	var (
+		runOutput         *RunOutput
+		waitForContext    sync.WaitGroup
+		waitForStep       sync.WaitGroup
+		filenameToProcess []fileToProcess
+	)
+
+	// get list of files
+	files, inputDir, fileType, schema, err := c.getFiles()
+	if err != nil {
+		c.err = err
+		return runOutput
+	}
+	// initialize variables
 	runOutput = &RunOutput{}
 	runOutput.Contexts = make([]*Context, len(files))
-	filenameToProcess = make([]string, len(files))
+	filenameToProcess = make([]fileToProcess, len(files))
+
+	// loop over files, prepare to run different contexts in goroutines
 	for k, f := range files {
 		runOutput.Contexts[k] = &Context{
 			steps: copySteps(c.steps),
 			input: c.input,
 		}
-		filenameToProcess[k] = inputDir + "/" + f.Name()
+		filenameToProcess[k] = fileToProcess{filename: inputDir + "/" + f.Name(), fileType: fileType, schema: schema}
 		// add waiting points, so we can sync later in the execution of the step
 		for _, step := range c.steps {
 			if step.getStepType() == "reducebykey" {
@@ -82,45 +94,53 @@ func (c *Context) Run() *RunOutput {
 	}
 	for k := range runOutput.Contexts {
 		waitForContext.Add(1)
-		go func(partition int, file string) {
+		go func(partition int, file fileToProcess) {
 			runFile(partition, file, &waitForContext, &waitForStep, runOutput.Contexts)
 		}(k, filenameToProcess[k])
 	}
 	// wait for completion of the contexts
 	waitForContext.Wait()
 
+	for _, contexts := range runOutput.Contexts {
+		if contexts.err != nil {
+			c.err = err
+			return runOutput
+		}
+	}
+
 	return runOutput
 }
 
-func runFile(partition int, filename string, waitForContext *sync.WaitGroup, waitForStep *sync.WaitGroup, contexts []*Context) {
+func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.WaitGroup, waitForStep *sync.WaitGroup, contexts []*Context) {
 	var (
 		buffer      bytes.Buffer
 		bufferKey   bytes.Buffer
 		bufferValue bytes.Buffer
+		err         error
+		inputFile   *Input
 	)
 
 	defer waitForContext.Done()
 
-	fmt.Printf("runFile: %s (partition %d)\n", filename, partition+1)
-
-	file, err := os.Open(filename)
-	if err != nil {
+	fmt.Printf("runFile: %s (partition %d)\n", fileToProcess.filename, partition+1)
+	inputFile = NewInput(fileToProcess)
+	if err = inputFile.InitFile(); err != nil {
 		contexts[partition].err = err
+		// TODO: provide better error control
+		panic(err)
 		return
 	}
-	defer file.Close()
 
-	for k, step := range contexts[partition].steps {
-		if k == 0 {
-			step.setScanner(bufio.NewScanner(file))
-		} else {
-			step.setScanner(bufio.NewScanner(&buffer))
-			step.setScannerKV(bufio.NewScanner(&bufferKey), bufio.NewScanner(&bufferValue))
-		}
-		if err = step.do(partition, len(contexts)); err != nil {
+	for _, step := range contexts[partition].steps {
+		step.setInput(inputFile)
+
+		if err := step.do(partition, len(contexts)); err != nil {
 			contexts[partition].err = err
 			return
 		}
+		// file can be closed now
+		inputFile.Close()
+		// gather input
 		buffer = step.getOutput()
 		bufferKey, bufferValue = step.getOutputKV()
 
@@ -130,7 +150,7 @@ func runFile(partition int, filename string, waitForContext *sync.WaitGroup, wai
 			contexts[partition].outputValue = bufferValue
 			bufferKey = bytes.Buffer{}
 			bufferValue = bytes.Buffer{}
-			if err := handleReduceSync(partition, waitForStep, contexts, step); err != nil {
+			if err := handleReduceSync(partition, waitForStep, contexts, inputFile, step); err != nil {
 				contexts[partition].err = err
 				return
 			}
@@ -139,13 +159,21 @@ func runFile(partition int, filename string, waitForContext *sync.WaitGroup, wai
 			}
 			bufferKey, bufferValue = step.getOutputKV()
 		}
+		// set inputfile to new input for next step
+		inputFile.currentType = step.getOutputType()
+		if inputFile.currentType == "value" {
+			inputFile.SetScanner(bufio.NewScanner(&buffer))
+		} else {
+			inputFile.SetScannerKV(bufio.NewScanner(&bufferKey), bufio.NewScanner(&bufferValue))
+		}
 	}
 	contexts[partition].output = buffer
 	contexts[partition].outputKey = bufferKey
 	contexts[partition].outputValue = bufferValue
 	return
 }
-func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Context, step Step) error {
+
+func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Context, inputFile *Input, step Step) error {
 	waitForStep.Done()
 	waitForStep.Wait()
 	var (
@@ -161,7 +189,7 @@ func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Co
 			contexts[k].outputValue = bytes.Buffer{}
 			contexts[k].output = bytes.Buffer{}
 		}
-		step.setScannerKV(bufio.NewScanner(&bufferKey), bufio.NewScanner(&bufferValue))
+		inputFile.SetScannerKV(bufio.NewScanner(&bufferKey), bufio.NewScanner(&bufferValue))
 		if err := step.do(partition, len(contexts)); err != nil {
 			return err
 		}

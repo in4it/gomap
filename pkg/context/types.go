@@ -1,7 +1,6 @@
 package context
 
 import (
-	"bufio"
 	"bytes"
 )
 
@@ -9,6 +8,8 @@ type Context struct {
 	config      string
 	err         error
 	input       string
+	inputType   string
+	inputSchema interface{}
 	steps       []Step
 	output      bytes.Buffer
 	outputKey   bytes.Buffer
@@ -19,8 +20,7 @@ type Context struct {
 type Step interface {
 	do(partition, totalPartitions int) error
 	getOutput() bytes.Buffer
-	setScanner(scanner *bufio.Scanner)
-	setScannerKV(scannerKey, scannerValue *bufio.Scanner)
+	setInput(inputFile *Input)
 	getOutputKV() (bytes.Buffer, bytes.Buffer)
 	getOutputType() string
 	getStats() StepStats
@@ -30,4 +30,10 @@ type Step interface {
 
 type StepStats struct {
 	invoked int
+}
+
+type fileToProcess struct {
+	filename string
+	fileType string
+	schema   interface{}
 }
