@@ -36,7 +36,7 @@ func (m *ReduceByKey) do(partition, totalPartitions int) error {
 		if reducedValue, ok := reduced[string(key)]; ok {
 			reduced[string(key)] = m.function(reducedValue, value)
 		} else {
-			reduced[string(key)] = utils.PutRecord(value)
+			reduced[string(key)] = value
 		}
 	}
 

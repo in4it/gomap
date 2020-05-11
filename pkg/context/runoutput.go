@@ -52,19 +52,27 @@ func (r *RunOutput) GetKV() ([]types.RawOutput, []types.RawOutput) {
 	keys := []types.RawOutput{}
 	values := []types.RawOutput{}
 	for _, context := range r.Contexts {
-		keyScanner := bufio.NewScanner(&context.outputKey)
-		valueScanner := bufio.NewScanner(&context.outputValue)
-
-		for keyScanner.Scan() {
-			valueScanner.Scan()
-			keys = append(keys, keyScanner.Bytes())
-			values = append(values, valueScanner.Bytes())
-		}
-		if err := keyScanner.Err(); err != nil {
-			panic(err)
-		}
-		if err := valueScanner.Err(); err != nil {
-			panic(err)
+		if context.outputType == "kv" {
+			for {
+				moreRecords, record, err := utils.ReadRecord(&context.outputKey)
+				if err != nil {
+					panic(err)
+				}
+				if !moreRecords {
+					break
+				}
+				keys = append(keys, record)
+			}
+			for {
+				moreRecords, record, err := utils.ReadRecord(&context.outputValue)
+				if err != nil {
+					panic(err)
+				}
+				if !moreRecords {
+					break
+				}
+				values = append(values, record)
+			}
 		}
 	}
 	return keys, values
