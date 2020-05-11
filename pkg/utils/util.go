@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/binary"
+	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/in4it/gomap/pkg/types"
@@ -10,7 +13,7 @@ import (
 
 const UTILS_HEADERLENGTH = 8
 
-func StringArrayToBytes(input []string) []types.RawOutput {
+func StringArrayToRawOutput(input []string) []types.RawOutput {
 	output := make([]types.RawOutput, len(input))
 	for k, v := range input {
 		output[k] = []byte(v)
@@ -60,4 +63,33 @@ func PutRecord(data []byte) []byte {
 
 func GetRecordLength(data []byte) uint32 {
 	return binary.LittleEndian.Uint32(data)
+}
+
+func ReadRecord(input *bytes.Buffer) (bool, []byte, error) {
+	header := make([]byte, UTILS_HEADERLENGTH)
+	n, err := input.Read(header)
+	if n == 0 {
+		fmt.Printf("no bytes read\n")
+	}
+	if err != nil {
+		if err == io.EOF {
+			fmt.Printf("EOF\n")
+			return false, []byte{}, nil
+		}
+		return false, []byte{}, err
+	}
+	recordsize := GetRecordLength(header)
+
+	outputRecord := make([]byte, recordsize)
+	n, err = input.Read(outputRecord)
+	if n == 0 {
+		fmt.Printf("Error while reading record: no bytes read\n")
+		return false, []byte{}, nil
+	}
+	if err != nil {
+		fmt.Printf("Error while reading record: %s", err)
+		return false, outputRecord, err
+	}
+
+	return true, outputRecord, nil
 }

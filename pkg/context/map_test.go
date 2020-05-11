@@ -21,7 +21,7 @@ func TestMap(t *testing.T) {
 	}
 	m := FlatMap{
 		function: func(str types.RawInput) []types.RawOutput {
-			return utils.StringArrayToBytes(strings.Split(string(str), " "))
+			return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 		},
 		inputFile: &inputFile,
 	}

@@ -12,7 +12,7 @@ import (
 func TestRunSingleFile(t *testing.T) {
 	c := New()
 	output := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
-		return utils.StringArrayToBytes(strings.Split(string(str), " "))
+		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).Run().Get()
 
 	if c.err != nil {
@@ -43,17 +43,15 @@ type MapObject struct {
 func TestMapObject(t *testing.T) {
 	c := New()
 	output := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
-		return utils.StringArrayToBytes(strings.Split(string(str), " "))
+		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).Map(func(input types.RawInput) types.RawOutput {
-		fmt.Printf("to upper: %s\n", string(input))
-		fmt.Printf("here")
-		return utils.RawEncode(MapObject{Word: string(input), WordUpper: strings.ToUpper(string(input))})
+		rawEncode := utils.RawEncode(MapObject{Word: string(input), WordUpper: strings.ToUpper(string(input))})
+		return rawEncode
 	}).Run().Get()
 
 	if c.err != nil {
 		t.Errorf("Error: %s", c.err)
 	}
-
 	expected := "this\nis\na\nsentence\nthis\nis\nanother\nsentence"
 
 	for _, v1 := range strings.Split(expected, "\n") {
@@ -62,11 +60,10 @@ func TestMapObject(t *testing.T) {
 			var line MapObject
 			err := utils.RawDecode(v2, &line)
 			if err != nil {
-				t.Errorf("Error: %s", err)
-				t.Errorf("Raw: %d", len(v2))
+				t.Errorf("Error: %s\n", err)
 				return
 			}
-			if v1 == string(line.Word) {
+			if v1 == line.Word && strings.ToUpper(v1) == line.WordUpper {
 				found = true
 			}
 
@@ -81,7 +78,7 @@ func TestMapObject(t *testing.T) {
 func TestRunSingleFileKV(t *testing.T) {
 	c := New()
 	keys, values := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
-		return utils.StringArrayToBytes(strings.Split(string(str), " "))
+		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
 	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
@@ -126,7 +123,7 @@ func TestRunSingleFileKV(t *testing.T) {
 func TestMultipleFiles(t *testing.T) {
 	c := New()
 	keys, values := c.Read("testdata/multi-file-sentences").FlatMap(func(str types.RawInput) []types.RawOutput {
-		return utils.StringArrayToBytes(strings.Split(string(str), " "))
+		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
 	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {

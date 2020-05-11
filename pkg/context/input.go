@@ -3,8 +3,6 @@ package context
 import (
 	"bufio"
 	"bytes"
-	"fmt"
-	"io"
 	"os"
 
 	"github.com/in4it/gomap/pkg/utils"
@@ -94,37 +92,13 @@ func (i *Input) Scan() bool {
 	return false
 }
 func (i *Input) readRecordFromValue() bool {
-	header := make([]byte, utils.UTILS_HEADERLENGTH)
-	n, err := i.bufferValue.Read(header)
-	if n == 0 {
-		fmt.Printf("no bytes read\n")
-	}
+	var ret bool
+	var err error
+	ret, i.valueRecord, err = utils.ReadRecord(i.bufferValue)
 	if err != nil {
-		if err == io.EOF {
-			fmt.Printf("EOF\n")
-			return false
-		} else {
-			i.valueRecordErr = err
-			fmt.Printf("Error while reading: %s", err)
-			return false
-		}
+		i.valueRecordErr = err
 	}
-	i.keyRecordSize = utils.GetRecordLength(header)
-
-	i.valueRecord = make([]byte, i.keyRecordSize)
-	n, err = i.bufferValue.Read(i.valueRecord)
-	if n == 0 {
-		fmt.Printf("Error while reading record: no bytes read\n")
-	}
-	if err != nil {
-		fmt.Printf("Error while reading record: %s", err)
-		return false
-	}
-
-	i.valueRecordErr = nil
-	fmt.Printf("All true, continuing... Read %d bytes, recordsize %d\n", n, i.keyRecordSize)
-	fmt.Printf("OK\n")
-	return true
+	return ret
 }
 func (i *Input) SetScanner(value *bufio.Scanner) {
 	i.valueScanner = value

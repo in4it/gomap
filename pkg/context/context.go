@@ -167,6 +167,7 @@ func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.Wa
 	}
 	contexts[partition].outputKey = bufferKey
 	contexts[partition].outputValue = bufferValue
+	contexts[partition].outputType = inputFile.currentType
 	return
 }
 

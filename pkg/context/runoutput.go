@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/in4it/gomap/pkg/types"
+	"github.com/in4it/gomap/pkg/utils"
 )
 
 type RunOutput struct {
@@ -31,13 +32,17 @@ func (r *RunOutput) Print() {
 func (r *RunOutput) Get() []types.RawOutput {
 	ret := []types.RawOutput{}
 	for _, context := range r.Contexts {
-		scanner := bufio.NewScanner(&context.outputValue)
-
-		for scanner.Scan() {
-			ret = append(ret, scanner.Bytes())
-		}
-		if err := scanner.Err(); err != nil {
-			panic(err)
+		if context.outputType == "value" {
+			for {
+				moreRecords, record, err := utils.ReadRecord(&context.outputValue)
+				if err != nil {
+					panic(err)
+				}
+				if !moreRecords {
+					break
+				}
+				ret = append(ret, record)
+			}
 		}
 	}
 	return ret
