@@ -1,7 +1,6 @@
 package context
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io/ioutil"
@@ -113,7 +112,6 @@ func (c *Context) Run() *RunOutput {
 
 func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.WaitGroup, waitForStep *sync.WaitGroup, contexts []*Context) {
 	var (
-		buffer      bytes.Buffer
 		bufferKey   bytes.Buffer
 		bufferValue bytes.Buffer
 		err         error
@@ -141,7 +139,6 @@ func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.Wa
 		// file can be closed now
 		inputFile.Close()
 		// gather input
-		buffer = step.getOutput()
 		bufferKey, bufferValue = step.getOutputKV()
 
 		if step.getStepType() == "reducebykey" {
@@ -162,14 +159,15 @@ func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.Wa
 		// set inputfile to new input for next step
 		inputFile.currentType = step.getOutputType()
 		if inputFile.currentType == "value" {
-			inputFile.SetScanner(bufio.NewScanner(&buffer))
+			inputFile.SetBufferValue(&bufferValue)
 		} else {
-			inputFile.SetScannerKV(bufio.NewScanner(&bufferKey), bufio.NewScanner(&bufferValue))
+			inputFile.SetBufferKey(&bufferKey)
+			inputFile.SetBufferValue(&bufferValue)
 		}
 	}
-	contexts[partition].output = buffer
 	contexts[partition].outputKey = bufferKey
 	contexts[partition].outputValue = bufferValue
+	contexts[partition].outputType = inputFile.currentType
 	return
 }
 
@@ -187,9 +185,9 @@ func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Co
 			bufferValue.Write(contexts[k].outputValue.Bytes())
 			contexts[k].outputKey = bytes.Buffer{}
 			contexts[k].outputValue = bytes.Buffer{}
-			contexts[k].output = bytes.Buffer{}
 		}
-		inputFile.SetScannerKV(bufio.NewScanner(&bufferKey), bufio.NewScanner(&bufferValue))
+		inputFile.SetBufferKey(&bufferKey)
+		inputFile.SetBufferValue(&bufferValue)
 		if err := step.do(partition, len(contexts)); err != nil {
 			return err
 		}

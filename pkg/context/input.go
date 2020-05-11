@@ -2,8 +2,11 @@ package context
 
 import (
 	"bufio"
+	"bytes"
+	"fmt"
 	"os"
 
+	"github.com/in4it/gomap/pkg/utils"
 	"github.com/vmihailenco/msgpack"
 	"github.com/xitongsys/parquet-go-source/local"
 	"github.com/xitongsys/parquet-go/reader"
@@ -14,8 +17,14 @@ type Input struct {
 	currentType       string
 	osFile            *os.File
 	fileScanner       *bufio.Scanner
-	keyScanner        *bufio.Scanner
-	valueScanner      *bufio.Scanner
+	bufferKey         *bytes.Buffer
+	bufferValue       *bytes.Buffer
+	keyRecordSize     uint32
+	keyRecordErr      error
+	valueRecordSize   uint32
+	valueRecordErr    error
+	keyRecord         []byte
+	valueRecord       []byte
 	fileToProcess     fileToProcess
 	parquetFileReader parquet.ParquetFile
 	parquetReader     *reader.ParquetReader
@@ -76,47 +85,63 @@ func (i *Input) Scan() bool {
 		}
 		return false
 	} else if i.currentType == "kv" {
-		return i.keyScanner.Scan() && i.valueScanner.Scan()
+		return i.readRecordFromKey() && i.readRecordFromValue()
 	} else if i.currentType == "value" {
-		return i.valueScanner.Scan()
+		return i.readRecordFromValue()
 	}
 	return false
 }
-func (i *Input) SetScanner(value *bufio.Scanner) {
-	i.valueScanner = value
+func (i *Input) readRecordFromKey() bool {
+	var ret bool
+	var err error
+	ret, i.keyRecord, err = utils.ReadRecord(i.bufferKey)
+	if err != nil {
+		i.keyRecordErr = err
+	}
+	return ret
 }
-func (i *Input) SetScannerKV(key, value *bufio.Scanner) {
-	i.keyScanner = key
-	i.valueScanner = value
+func (i *Input) readRecordFromValue() bool {
+	var ret bool
+	var err error
+	ret, i.valueRecord, err = utils.ReadRecord(i.bufferValue)
+	if err != nil {
+		i.valueRecordErr = err
+	}
+	return ret
 }
+func (i *Input) SetBufferKey(key *bytes.Buffer) {
+	i.bufferKey = key
+}
+func (i *Input) SetBufferValue(value *bytes.Buffer) {
+	i.bufferValue = value
+}
+
 func (i *Input) Bytes() ([]byte, []byte) {
 	switch i.currentType {
 	case "file":
 		return []byte{}, i.fileScanner.Bytes()
 	case "parquet":
-		/*records := reflect.ValueOf(i.fileToProcess.schema).Elem()
-		records.Set(reflect.MakeSlice(records.Type(), 1, 1))
-		elemType := records.Type().Elem()
-		v := reflect.New(elemType)
-		err := i.parquetReader.Read(v)*/
 		b, err := msgpack.Marshal(&i.parquetRecord)
 		if err != nil {
 			panic(err)
 		}
 		return []byte{}, b
 	case "value":
-		return []byte{}, i.valueScanner.Bytes()
+		return []byte{}, i.valueRecord
+	case "kv":
+		return i.keyRecord, i.valueRecord
 	}
-	return i.keyScanner.Bytes(), i.valueScanner.Bytes()
+	return []byte{}, []byte{}
 }
 func (i *Input) Err() (error, error) {
 	if i.currentType == "file" {
 		return nil, i.fileScanner.Err()
 	} else if i.currentType == "value" {
-		return nil, i.valueScanner.Err()
+		return nil, i.valueRecordErr
 	} else if i.currentType == "parquet" {
 		return nil, i.parquetErr
-	} else {
-		return i.keyScanner.Err(), i.valueScanner.Err()
+	} else if i.currentType == "kv" {
+		return i.keyRecordErr, i.valueRecordErr
 	}
+	return fmt.Errorf("output type not recognized"), fmt.Errorf("output type not recognized")
 }

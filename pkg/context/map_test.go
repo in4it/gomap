@@ -1,7 +1,6 @@
 package context
 
 import (
-	"bufio"
 	"bytes"
 	"strings"
 	"testing"
@@ -13,15 +12,14 @@ import (
 func TestMap(t *testing.T) {
 	var input bytes.Buffer
 
-	input.WriteString("this is a sentence\nthis is another sentence")
-
+	input.Write(append(utils.PutStringRecord("this is a sentence"), utils.PutStringRecord("this is another sentence")...))
 	inputFile := Input{
-		currentType:  "value",
-		valueScanner: bufio.NewScanner(&input),
+		currentType: "value",
+		bufferValue: &input,
 	}
 	m := FlatMap{
 		function: func(str types.RawInput) []types.RawOutput {
-			return utils.StringArrayToBytes(strings.Split(string(str), " "))
+			return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 		},
 		inputFile: &inputFile,
 	}
@@ -29,17 +27,24 @@ func TestMap(t *testing.T) {
 		t.Errorf("do() error: %s", err)
 		return
 	}
-	output := m.getOutput()
+	_, output := m.getOutputKV()
 
-	scanner := bufio.NewScanner(&output)
 	res := ""
-	for scanner.Scan() {
-		res += scanner.Text() + "\n"
+
+	for {
+		moreRecords, record, err := utils.ReadRecord(&output)
+		if err != nil {
+			panic(err)
+		}
+		if !moreRecords {
+			break
+		}
+		res += string(record) + "\n"
 	}
 
 	expected := "this\nis\na\nsentence\nthis\nis\nanother\nsentence\n"
 
 	if res != expected {
-		t.Errorf("expected result is wrong: %s\nexepcted:%s\n", res, expected)
+		t.Errorf("expected result is wrong: => %s\nexepcted: =>%s\n", res, expected)
 	}
 }

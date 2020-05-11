@@ -2,14 +2,18 @@ package utils
 
 import (
 	"bytes"
-	"encoding/gob"
+	"encoding/binary"
+	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/vmihailenco/msgpack"
 )
 
-func StringArrayToBytes(input []string) []types.RawOutput {
+const UTILS_HEADERLENGTH = 8
+
+func StringArrayToRawOutput(input []string) []types.RawOutput {
 	output := make([]types.RawOutput, len(input))
 	for k, v := range input {
 		output[k] = []byte(v)
@@ -17,11 +21,15 @@ func StringArrayToBytes(input []string) []types.RawOutput {
 	return output
 }
 
-func RawEncode(input interface{}) []byte {
-	var ret bytes.Buffer
-	enc := gob.NewEncoder(&ret)
-	enc.Encode(input)
-	return ret.Bytes()
+func RawEncode(item interface{}) []byte {
+	b, err := msgpack.Marshal(&item)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+func RawDecode(input []byte, item interface{}) error {
+	return msgpack.Unmarshal(input, &item)
 }
 
 func RawInputToInt(input types.RawInput) int {
@@ -45,4 +53,47 @@ func RawInputToRawOutput(input []byte) types.RawOutput {
 }
 func UnmarshalRawInput(input []byte, item interface{}) error {
 	return msgpack.Unmarshal(input, &item)
+}
+
+func PutRecord(data []byte) []byte {
+	b := make([]byte, UTILS_HEADERLENGTH)
+	binary.LittleEndian.PutUint32(b, uint32(len(data)))
+	return append(b, data...)
+}
+func PutStringRecord(str string) []byte {
+	b := make([]byte, UTILS_HEADERLENGTH)
+	binary.LittleEndian.PutUint32(b, uint32(len(str)))
+	return append(b, str...)
+}
+
+func GetRecordLength(data []byte) uint32 {
+	return binary.LittleEndian.Uint32(data)
+}
+
+func ReadRecord(input *bytes.Buffer) (bool, []byte, error) {
+	header := make([]byte, UTILS_HEADERLENGTH)
+	n, err := input.Read(header)
+	if err != nil {
+		if err == io.EOF {
+			return false, []byte{}, nil
+		}
+		return false, []byte{}, err
+	}
+	if n == 0 {
+		fmt.Printf("no bytes read\n")
+	}
+	recordsize := GetRecordLength(header)
+
+	outputRecord := make([]byte, recordsize)
+	n, err = input.Read(outputRecord)
+	if n == 0 {
+		fmt.Printf("Error while reading record: no bytes read\n")
+		return false, []byte{}, nil
+	}
+	if err != nil {
+		fmt.Printf("Error while reading record: %s", err)
+		return false, outputRecord, err
+	}
+
+	return true, outputRecord, nil
 }

@@ -1,17 +1,15 @@
 package context
 
 import (
-	"bufio"
 	"bytes"
 
 	"github.com/in4it/gomap/pkg/types"
+	"github.com/in4it/gomap/pkg/utils"
 )
 
 type MapToKV struct {
 	function    types.MapToKVFunction
-	scanner     *bufio.Scanner
 	inputFile   *Input
-	output      bytes.Buffer
 	outputKey   bytes.Buffer
 	outputValue bytes.Buffer
 	invoked     int
@@ -31,8 +29,8 @@ func (m *MapToKV) do(partition, totalPartitions int) error {
 		m.invoked++
 		_, inputValue := m.inputFile.Bytes()
 		key, value := m.function(inputValue)
-		m.outputKey.Write(append(key, []byte("\n")...))
-		m.outputValue.Write(append(value, []byte("\n")...))
+		m.outputKey.Write(utils.PutRecord(key))
+		m.outputValue.Write(utils.PutRecord(value))
 	}
 
 	if _, err := m.inputFile.Err(); err != nil {
@@ -41,21 +39,11 @@ func (m *MapToKV) do(partition, totalPartitions int) error {
 	return nil
 }
 
-func (m *MapToKV) getOutput() bytes.Buffer {
-	return m.output
-}
-
 func (m *MapToKV) getOutputKV() (bytes.Buffer, bytes.Buffer) {
 	return m.outputKey, m.outputValue
 }
 func (m *MapToKV) getOutputType() string {
 	return "kv"
-}
-
-func (m *MapToKV) setScanner(scanner *bufio.Scanner) {
-	m.scanner = scanner
-}
-func (m *MapToKV) setScannerKV(scannerKey, scannerValue *bufio.Scanner) {
 }
 
 func (m *MapToKV) getStats() StepStats {

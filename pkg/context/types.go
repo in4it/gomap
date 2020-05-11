@@ -11,7 +11,6 @@ type Context struct {
 	inputType   string
 	inputSchema interface{}
 	steps       []Step
-	output      bytes.Buffer
 	outputKey   bytes.Buffer
 	outputValue bytes.Buffer
 	outputType  string
@@ -19,7 +18,6 @@ type Context struct {
 
 type Step interface {
 	do(partition, totalPartitions int) error
-	getOutput() bytes.Buffer
 	setInput(inputFile *Input)
 	getOutputKV() (bytes.Buffer, bytes.Buffer)
 	getOutputType() string

@@ -2,9 +2,9 @@ package context
 
 import (
 	"bytes"
-	"strings"
 
 	"github.com/in4it/gomap/pkg/types"
+	"github.com/in4it/gomap/pkg/utils"
 )
 
 type ReduceByKey struct {
@@ -36,13 +36,13 @@ func (m *ReduceByKey) do(partition, totalPartitions int) error {
 		if reducedValue, ok := reduced[string(key)]; ok {
 			reduced[string(key)] = m.function(reducedValue, value)
 		} else {
-			reduced[string(key)] = []byte(strings.TrimSuffix(string(value), "\n"))
+			reduced[string(key)] = value
 		}
 	}
 
 	for key, value := range reduced {
-		m.outputKey.Write([]byte(key + "\n"))
-		m.outputValue.Write(append(value, []byte("\n")...))
+		m.outputKey.Write(utils.PutRecord([]byte(key)))
+		m.outputValue.Write(utils.PutRecord(value))
 	}
 	err1, err2 := m.inputFile.Err()
 	if err1 != nil {

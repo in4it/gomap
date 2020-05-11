@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	"github.com/in4it/gomap/pkg/types"
+	"github.com/in4it/gomap/pkg/utils"
 )
 
 type FlatMap struct {
@@ -27,7 +28,7 @@ func (m *FlatMap) do(partition, totalPartitions int) error {
 		_, value := m.inputFile.Bytes()
 		m.invoked++
 		for _, output := range m.function(value) {
-			m.output.WriteString(string(output) + "\n")
+			m.output.Write(utils.PutRecord(output))
 		}
 	}
 
@@ -37,11 +38,8 @@ func (m *FlatMap) do(partition, totalPartitions int) error {
 	return nil
 }
 
-func (m *FlatMap) getOutput() bytes.Buffer {
-	return m.output
-}
 func (m *FlatMap) getOutputKV() (bytes.Buffer, bytes.Buffer) {
-	return bytes.Buffer{}, bytes.Buffer{}
+	return bytes.Buffer{}, m.output
 }
 func (m *FlatMap) getOutputType() string {
 	return "value"
