@@ -36,7 +36,7 @@ func main() {
 
 	c := context.New()
 	c.Read(input).FlatMap(func(str types.RawInput) []types.RawOutput {
-		return utils.StringArrayToBytes(strings.Split(string(str), " "))
+		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
 	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
