@@ -60,6 +60,11 @@ func PutRecord(data []byte) []byte {
 	binary.LittleEndian.PutUint32(b, uint32(len(data)))
 	return append(b, data...)
 }
+func PutStringRecord(str string) []byte {
+	b := make([]byte, UTILS_HEADERLENGTH)
+	binary.LittleEndian.PutUint32(b, uint32(len(str)))
+	return append(b, str...)
+}
 
 func GetRecordLength(data []byte) uint32 {
 	return binary.LittleEndian.Uint32(data)
@@ -68,15 +73,14 @@ func GetRecordLength(data []byte) uint32 {
 func ReadRecord(input *bytes.Buffer) (bool, []byte, error) {
 	header := make([]byte, UTILS_HEADERLENGTH)
 	n, err := input.Read(header)
-	if n == 0 {
-		fmt.Printf("no bytes read\n")
-	}
 	if err != nil {
 		if err == io.EOF {
-			fmt.Printf("EOF\n")
 			return false, []byte{}, nil
 		}
 		return false, []byte{}, err
+	}
+	if n == 0 {
+		fmt.Printf("no bytes read\n")
 	}
 	recordsize := GetRecordLength(header)
 

@@ -3,6 +3,7 @@ package context
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"os"
 
 	"github.com/in4it/gomap/pkg/utils"
@@ -19,12 +20,11 @@ type Input struct {
 	bufferKey         *bytes.Buffer
 	bufferValue       *bytes.Buffer
 	keyRecordSize     uint32
+	keyRecordErr      error
 	valueRecordSize   uint32
 	valueRecordErr    error
 	keyRecord         []byte
 	valueRecord       []byte
-	keyScanner        *bufio.Scanner
-	valueScanner      *bufio.Scanner
 	fileToProcess     fileToProcess
 	parquetFileReader parquet.ParquetFile
 	parquetReader     *reader.ParquetReader
@@ -85,11 +85,20 @@ func (i *Input) Scan() bool {
 		}
 		return false
 	} else if i.currentType == "kv" {
-		return i.keyScanner.Scan() && i.valueScanner.Scan()
+		return i.readRecordFromKey() && i.readRecordFromValue()
 	} else if i.currentType == "value" {
 		return i.readRecordFromValue()
 	}
 	return false
+}
+func (i *Input) readRecordFromKey() bool {
+	var ret bool
+	var err error
+	ret, i.keyRecord, err = utils.ReadRecord(i.bufferKey)
+	if err != nil {
+		i.keyRecordErr = err
+	}
+	return ret
 }
 func (i *Input) readRecordFromValue() bool {
 	var ret bool
@@ -100,16 +109,13 @@ func (i *Input) readRecordFromValue() bool {
 	}
 	return ret
 }
-func (i *Input) SetScanner(value *bufio.Scanner) {
-	i.valueScanner = value
+func (i *Input) SetBufferKey(key *bytes.Buffer) {
+	i.bufferKey = key
 }
-func (i *Input) SetBuffer(value *bytes.Buffer) {
+func (i *Input) SetBufferValue(value *bytes.Buffer) {
 	i.bufferValue = value
 }
-func (i *Input) SetScannerKV(key, value *bufio.Scanner) {
-	i.keyScanner = key
-	i.valueScanner = value
-}
+
 func (i *Input) Bytes() ([]byte, []byte) {
 	switch i.currentType {
 	case "file":
@@ -122,8 +128,10 @@ func (i *Input) Bytes() ([]byte, []byte) {
 		return []byte{}, b
 	case "value":
 		return []byte{}, i.valueRecord
+	case "kv":
+		return i.keyRecord, i.valueRecord
 	}
-	return i.keyScanner.Bytes(), i.valueScanner.Bytes()
+	return []byte{}, []byte{}
 }
 func (i *Input) Err() (error, error) {
 	if i.currentType == "file" {
@@ -132,7 +140,8 @@ func (i *Input) Err() (error, error) {
 		return nil, i.valueRecordErr
 	} else if i.currentType == "parquet" {
 		return nil, i.parquetErr
-	} else {
-		return i.keyScanner.Err(), i.valueScanner.Err()
+	} else if i.currentType == "kv" {
+		return i.keyRecordErr, i.valueRecordErr
 	}
+	return fmt.Errorf("output type not recognized"), fmt.Errorf("output type not recognized")
 }
