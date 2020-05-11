@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	"github.com/in4it/gomap/pkg/types"
+	"github.com/in4it/gomap/pkg/utils"
 )
 
 type Map struct {
@@ -25,10 +26,8 @@ func newMap(fn types.MapFunction) *Map {
 func (m *Map) do(partition, totalPartitions int) error {
 	for m.inputFile.Scan() {
 		_, value := m.inputFile.Bytes()
-		for _, output := range m.function(value) {
-			m.invoked++
-			m.output.WriteString(string(output) + "\n")
-		}
+		res := m.function(value)
+		m.output.Write(utils.PutRecord(res))
 	}
 
 	if _, err := m.inputFile.Err(); err != nil {
@@ -37,11 +36,8 @@ func (m *Map) do(partition, totalPartitions int) error {
 	return nil
 }
 
-func (m *Map) getOutput() bytes.Buffer {
-	return m.output
-}
 func (m *Map) getOutputKV() (bytes.Buffer, bytes.Buffer) {
-	return bytes.Buffer{}, bytes.Buffer{}
+	return bytes.Buffer{}, m.output
 }
 func (m *Map) getOutputType() string {
 	return "value"

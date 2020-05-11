@@ -13,16 +13,9 @@ type RunOutput struct {
 
 func (r *RunOutput) Print() {
 	for _, context := range r.Contexts {
-		scanner := bufio.NewScanner(&context.output)
 		keyScanner := bufio.NewScanner(&context.outputKey)
 		valueScanner := bufio.NewScanner(&context.outputValue)
 
-		for scanner.Scan() {
-			fmt.Println(scanner.Text())
-		}
-		if err := scanner.Err(); err != nil {
-			panic(err)
-		}
 		for keyScanner.Scan() {
 			valueScanner.Scan()
 			fmt.Println(keyScanner.Text() + "," + valueScanner.Text())
@@ -38,7 +31,7 @@ func (r *RunOutput) Print() {
 func (r *RunOutput) Get() []types.RawOutput {
 	ret := []types.RawOutput{}
 	for _, context := range r.Contexts {
-		scanner := bufio.NewScanner(&context.output)
+		scanner := bufio.NewScanner(&context.outputValue)
 
 		for scanner.Scan() {
 			ret = append(ret, scanner.Bytes())

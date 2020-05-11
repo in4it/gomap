@@ -29,7 +29,7 @@ func TestMap(t *testing.T) {
 		t.Errorf("do() error: %s", err)
 		return
 	}
-	output := m.getOutput()
+	_, output := m.getOutputKV()
 
 	scanner := bufio.NewScanner(&output)
 	res := ""

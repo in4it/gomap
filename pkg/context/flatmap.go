@@ -37,11 +37,8 @@ func (m *FlatMap) do(partition, totalPartitions int) error {
 	return nil
 }
 
-func (m *FlatMap) getOutput() bytes.Buffer {
-	return m.output
-}
 func (m *FlatMap) getOutputKV() (bytes.Buffer, bytes.Buffer) {
-	return bytes.Buffer{}, bytes.Buffer{}
+	return bytes.Buffer{}, m.output
 }
 func (m *FlatMap) getOutputType() string {
 	return "value"

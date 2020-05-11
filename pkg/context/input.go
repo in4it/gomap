@@ -2,8 +2,12 @@ package context
 
 import (
 	"bufio"
+	"bytes"
+	"fmt"
+	"io"
 	"os"
 
+	"github.com/in4it/gomap/pkg/utils"
 	"github.com/vmihailenco/msgpack"
 	"github.com/xitongsys/parquet-go-source/local"
 	"github.com/xitongsys/parquet-go/reader"
@@ -14,6 +18,13 @@ type Input struct {
 	currentType       string
 	osFile            *os.File
 	fileScanner       *bufio.Scanner
+	bufferKey         *bytes.Buffer
+	bufferValue       *bytes.Buffer
+	keyRecordSize     uint32
+	valueRecordSize   uint32
+	valueRecordErr    error
+	keyRecord         []byte
+	valueRecord       []byte
 	keyScanner        *bufio.Scanner
 	valueScanner      *bufio.Scanner
 	fileToProcess     fileToProcess
@@ -78,12 +89,48 @@ func (i *Input) Scan() bool {
 	} else if i.currentType == "kv" {
 		return i.keyScanner.Scan() && i.valueScanner.Scan()
 	} else if i.currentType == "value" {
-		return i.valueScanner.Scan()
+		return i.readRecordFromValue()
 	}
 	return false
 }
+func (i *Input) readRecordFromValue() bool {
+	header := make([]byte, utils.UTILS_HEADERLENGTH)
+	n, err := i.bufferValue.Read(header)
+	if n == 0 {
+		fmt.Printf("no bytes read\n")
+	}
+	if err != nil {
+		if err == io.EOF {
+			fmt.Printf("EOF\n")
+			return false
+		} else {
+			i.valueRecordErr = err
+			fmt.Printf("Error while reading: %s", err)
+			return false
+		}
+	}
+	i.keyRecordSize = utils.GetRecordLength(header)
+
+	i.valueRecord = make([]byte, i.keyRecordSize)
+	n, err = i.bufferValue.Read(i.valueRecord)
+	if n == 0 {
+		fmt.Printf("Error while reading record: no bytes read\n")
+	}
+	if err != nil {
+		fmt.Printf("Error while reading record: %s", err)
+		return false
+	}
+
+	i.valueRecordErr = nil
+	fmt.Printf("All true, continuing... Read %d bytes, recordsize %d\n", n, i.keyRecordSize)
+	fmt.Printf("OK\n")
+	return true
+}
 func (i *Input) SetScanner(value *bufio.Scanner) {
 	i.valueScanner = value
+}
+func (i *Input) SetBuffer(value *bytes.Buffer) {
+	i.bufferValue = value
 }
 func (i *Input) SetScannerKV(key, value *bufio.Scanner) {
 	i.keyScanner = key
@@ -94,18 +141,13 @@ func (i *Input) Bytes() ([]byte, []byte) {
 	case "file":
 		return []byte{}, i.fileScanner.Bytes()
 	case "parquet":
-		/*records := reflect.ValueOf(i.fileToProcess.schema).Elem()
-		records.Set(reflect.MakeSlice(records.Type(), 1, 1))
-		elemType := records.Type().Elem()
-		v := reflect.New(elemType)
-		err := i.parquetReader.Read(v)*/
 		b, err := msgpack.Marshal(&i.parquetRecord)
 		if err != nil {
 			panic(err)
 		}
 		return []byte{}, b
 	case "value":
-		return []byte{}, i.valueScanner.Bytes()
+		return []byte{}, i.valueRecord
 	}
 	return i.keyScanner.Bytes(), i.valueScanner.Bytes()
 }
@@ -113,7 +155,7 @@ func (i *Input) Err() (error, error) {
 	if i.currentType == "file" {
 		return nil, i.fileScanner.Err()
 	} else if i.currentType == "value" {
-		return nil, i.valueScanner.Err()
+		return nil, i.valueRecordErr
 	} else if i.currentType == "parquet" {
 		return nil, i.parquetErr
 	} else {
