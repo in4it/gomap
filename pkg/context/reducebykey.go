@@ -3,13 +3,14 @@ package context
 import (
 	"bytes"
 
+	"github.com/in4it/gomap/pkg/input"
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/in4it/gomap/pkg/utils"
 )
 
 type ReduceByKey struct {
 	function    types.ReduceByKeyFunction
-	inputFile   *Input
+	inputFile   input.Input
 	outputKey   bytes.Buffer
 	outputValue bytes.Buffer
 	invoked     int
@@ -74,6 +75,6 @@ func (m *ReduceByKey) getStepType() string {
 func (m *ReduceByKey) getFunction() interface{} {
 	return m.function
 }
-func (m *ReduceByKey) setInput(inputFile *Input) {
+func (m *ReduceByKey) setInput(inputFile input.Input) {
 	m.inputFile = inputFile
 }

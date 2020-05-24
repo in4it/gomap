@@ -3,13 +3,14 @@ package context
 import (
 	"bytes"
 
+	"github.com/in4it/gomap/pkg/input"
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/in4it/gomap/pkg/utils"
 )
 
 type FlatMap struct {
 	function  types.FlatMapFunction
-	inputFile *Input
+	inputFile input.Input
 	output    bytes.Buffer
 	invoked   int
 }
@@ -56,6 +57,6 @@ func (m *FlatMap) getStepType() string {
 func (m *FlatMap) getFunction() interface{} {
 	return m.function
 }
-func (m *FlatMap) setInput(inputFile *Input) {
+func (m *FlatMap) setInput(inputFile input.Input) {
 	m.inputFile = inputFile
 }
