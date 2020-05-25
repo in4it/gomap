@@ -2,3 +2,4 @@
 /*-linux-amd64
 bigfile*.txt
 /output.txt
+.DS_Store

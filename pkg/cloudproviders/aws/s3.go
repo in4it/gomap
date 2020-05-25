@@ -1,8 +1,9 @@
 package aws
 
 import (
+	"bufio"
+
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -22,38 +23,17 @@ type S3 struct {
 type S3Config struct {
 	Region string
 	Bucket string
-	Prefix string
 }
 
-func NewS3(config S3Config) (*S3, error) {
-	sess, err := session.NewSession(&aws.Config{Region: aws.String(config.Region)})
+func NewS3(config S3Config) *S3 {
+	sess, err := session.NewSession( /*&aws.Config{Region: aws.String(config.Region)}*/ )
 	if err != nil {
 		readLogger.Errorf("Couldn't initialize S3: %s", err)
-		return nil, nil
+
 	}
 	svc := s3.New(sess)
 
-	// test connection
-	input := &s3.GetObjectInput{
-		Bucket: aws.String(config.Bucket),
-		Key:    aws.String(config.Prefix + "/test-perms"),
-	}
-	_, err = svc.GetObject(input)
-
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case s3.ErrCodeNoSuchKey:
-				// we have s3 permissions
-			default:
-				return nil, aerr
-			}
-		} else {
-			return nil, err
-		}
-	}
-
-	return &S3{config: config, svc: svc, sess: sess}, nil
+	return &S3{config: config, svc: svc, sess: sess}
 }
 
 func (s *S3) ListObjects() ([]string, error) {
@@ -82,8 +62,7 @@ func (s *S3) ListObjects() ([]string, error) {
 	}
 	return s3Objects, nil
 }
-func (s *S3) GetObject(filename string) ([]byte, error) {
-
+func (s *S3) RetrieveObject(filename string) ([]byte, error) {
 	contents := aws.NewWriteAtBuffer([]byte{})
 	downloader := s3manager.NewDownloader(s.sess)
 	readLogger.Debugf("GetObject: %s", filename)
@@ -96,4 +75,14 @@ func (s *S3) GetObject(filename string) ([]byte, error) {
 		return []byte{}, err
 	}
 	return contents.Bytes(), nil
+}
+func (s *S3) GetObjectScanner(key string) (*bufio.Scanner, error) {
+	req, err := s.svc.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(s.config.Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return bufio.NewScanner(req.Body), nil
 }

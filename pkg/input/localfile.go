@@ -2,7 +2,6 @@ package input
 
 import (
 	"bufio"
-	"bytes"
 	"os"
 )
 
@@ -39,10 +38,6 @@ func (i *LocalFile) Bytes() ([]byte, []byte) {
 }
 func (i *LocalFile) Err() (error, error) {
 	return nil, i.fileScanner.Err()
-}
-func (i *LocalFile) SetBufferKey(key *bytes.Buffer) {
-}
-func (i *LocalFile) SetBufferValue(value *bytes.Buffer) {
 }
 func (i *LocalFile) GetType() string {
 	return "file"
