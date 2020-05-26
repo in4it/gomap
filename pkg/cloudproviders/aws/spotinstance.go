@@ -24,6 +24,7 @@ type SpotInstanceConfig struct {
 	Executable          string
 	Cmd                 string
 	Region              string
+	LogGroup            string
 }
 
 type SpotInstance struct {
@@ -72,21 +73,32 @@ func (s *SpotInstance) SetLaunchSpecification(input []byte) error {
 	if err := json.Unmarshal(input, &s.config.launchSpecification); err != nil {
 		return err
 	}
-	// ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server
+
 	fmt.Printf("Got launch config: %+v\n", s.config.launchSpecification)
+
+	if s.config.launchSpecification.ImageId == nil {
+		ds := NewDataSource(s.config.Region)
+		amiID, err := ds.GetAMI(CANONICAL_OWNER_ID, []Filter{{Name: "name", Value: "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"}})
+		if err != nil {
+			return fmt.Errorf("Error while fetching ami: %s", err)
+		}
+		s.config.launchSpecification.ImageId = aws.String(amiID)
+	}
+
+	fmt.Printf("Using AMI ID: %s (ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server)\n", aws.StringValue(s.config.launchSpecification.ImageId))
 
 	// set userdata
 	executableName := filepath.Base(s.config.Executable)
 	userdata := `#!/bin/bash -e
-				wget https://github.com/in4it/tee2cloudwatch/releases/download/0.0.2/tee2cloudwatch-linux-amd64
+				wget https://github.com/in4it/tee2cloudwatch/releases/download/0.0.3/tee2cloudwatch-linux-amd64
 				chmod +x tee2cloudwatch-linux-amd64
-				exec > >(./tee2cloudwatch-linux-amd64 -logGroup test -region eu-west-1) 2>&1
-				  sudo apt-get update && sudo apt-get install awscli -y
+				exec > >(./tee2cloudwatch-linux-amd64 -logGroup ` + s.config.LogGroup + ` -region ` + s.config.Region + `) 2>&1
+				  sudo apt-get update -qq && sudo apt-get install awscli -y -qq
 				  aws s3 cp ` + s.config.Executable + ` ` + executableName + `
 				  chmod +x ` + executableName + `
 				  ` + s.config.Cmd + `
 				  echo "done! shutting down"
-				  shutdown -r now
+				  sudo shutdown now
 				`
 	userdataEnc := base64.StdEncoding.EncodeToString([]byte(userdata))
 

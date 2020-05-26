@@ -22,12 +22,14 @@ func main() {
 		executable          string
 		cmd                 string
 		region              string
+		logGroup            string
 	)
 
 	flag.StringVar(&launchSpecification, "launchSpecification", "", "launchSpecification")
 	flag.StringVar(&executable, "executable", "", "executable")
 	flag.StringVar(&cmd, "cmd", "", "cmd")
 	flag.StringVar(&region, "region", "", "region")
+	flag.StringVar(&logGroup, "logGroup", "", "logGroup")
 
 	flag.Parse()
 
@@ -43,11 +45,15 @@ func main() {
 	if region == "" {
 		usage("region not set")
 	}
+	if logGroup == "" {
+		usage("specify a cloudwatch log group")
+	}
 
 	s := aws.NewSpotInstance(aws.SpotInstanceConfig{
 		Executable: executable,
 		Cmd:        cmd,
 		Region:     region,
+		LogGroup:   logGroup,
 	})
 
 	// read launchspec
@@ -56,7 +62,10 @@ func main() {
 		panic(err)
 	}
 
-	s.SetLaunchSpecification(launchSpecificationJson)
+	err = s.SetLaunchSpecification(launchSpecificationJson)
+	if err != nil {
+		panic(err)
+	}
 
 	spotInstanceRequestId, err := s.LaunchSpotInstance()
 
@@ -83,6 +92,7 @@ func main() {
 
 	instanceId := s.GetSpotInstanceRequestInstanceId(spotInstanceRequestId)
 	fmt.Printf("Instance launched: %s\n", instanceId)
+	fmt.Printf("See cloudwatch logs for details\n")
 
 	return
 }

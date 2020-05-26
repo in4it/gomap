@@ -3,3 +3,4 @@
 bigfile*.txt
 /output.txt
 .DS_Store
+/test-*

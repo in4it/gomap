@@ -26,15 +26,19 @@ type Filter struct {
 	Value string
 }
 
-func NewDataSource() *DataSource {
-	sess := session.New()
+func NewDataSource(region string) *DataSource {
+	sess, err := session.NewSession(&aws.Config{Region: aws.String(region)})
+	if err != nil {
+		readLogger.Errorf("Couldn't initialize aws session: %s", err)
+		return nil
+	}
 	return &DataSource{
 		sess: sess,
 		svc:  ec2.New(sess),
 	}
 }
 
-func (d *DataSource) getAMI(owner string, filter []Filter) (string, error) {
+func (d *DataSource) GetAMI(owner string, filter []Filter) (string, error) {
 	var amiId string
 	input := &ec2.DescribeImagesInput{
 		Owners: []*string{aws.String(owner)},

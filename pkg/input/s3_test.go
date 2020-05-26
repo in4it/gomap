@@ -11,6 +11,8 @@ func TestS3Get(t *testing.T) {
 		t.Skip()
 		return
 	}
+	// unset aws region to make sure we can obtain the region ourselves
+	os.Setenv("AWS_REGION", "")
 	s3 := NewS3File(FileToProcess{
 		filename: os.Getenv("S3_TESTFILE"),
 	})

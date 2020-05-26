@@ -2,6 +2,8 @@ package aws
 
 import (
 	"bufio"
+	"fmt"
+	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -26,7 +28,12 @@ type S3Config struct {
 }
 
 func NewS3(config S3Config) *S3 {
-	sess, err := session.NewSession( /*&aws.Config{Region: aws.String(config.Region)}*/ )
+	region, err := getBucketRegion(config.Bucket)
+	if err != nil {
+		readLogger.Errorf("getBucketRegion: %s", err)
+	}
+
+	sess, err := session.NewSession(&aws.Config{Region: aws.String(region)})
 	if err != nil {
 		readLogger.Errorf("Couldn't initialize S3: %s", err)
 
@@ -85,4 +92,17 @@ func (s *S3) GetObjectScanner(key string) (*bufio.Scanner, error) {
 		return nil, err
 	}
 	return bufio.NewScanner(req.Body), nil
+}
+func getBucketRegion(bucketname string) (string, error) {
+	var (
+		res *http.Response
+		err error
+	)
+
+	url := fmt.Sprintf("https://%s.s3.amazonaws.com", bucketname)
+	if res, err = http.Head(url); err != nil {
+		return "", err
+	}
+
+	return res.Header.Get("X-Amz-Bucket-Region"), nil
 }
