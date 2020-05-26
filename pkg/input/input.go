@@ -6,7 +6,10 @@ func NewInput(fileToProcess FileToProcess) Input {
 		return NewParquetFile(fileToProcess)
 	case "localfile":
 		return NewLocalFile(fileToProcess)
+	case "s3file":
+		return NewS3File(fileToProcess)
 	}
+
 	return nil
 }
 

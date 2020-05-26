@@ -11,6 +11,10 @@ import (
 	"github.com/in4it/gomap/pkg/input"
 )
 
+type InputFile struct {
+	name string
+}
+
 func New() *Context {
 	return &Context{}
 }
@@ -33,21 +37,28 @@ func (c *Context) isFileOrDirectory(name string) (bool, error) {
 	return false, fmt.Errorf("File/Dir ormat not recognized")
 }
 
-func (c *Context) getFiles() ([]os.FileInfo, string, string, interface{}, error) {
+func (c *Context) getFiles() ([]InputFile, string, string, interface{}, error) {
 	var (
 		isDirectory bool
 		err         error
-		files       []os.FileInfo
+		files       []InputFile
+		fileInfo    []os.FileInfo
 		inputDir    string
 	)
+
+	// is file s3 file
+	if len(c.input) > 5 && c.input[:5] == "s3://" {
+		return []InputFile{{name: c.input}}, "", "s3file", c.inputSchema, nil
+	}
+
 	if isDirectory, err = c.isFileOrDirectory(c.input); err != nil {
 		return files, inputDir, c.inputType, c.inputSchema, err
 	}
 	if isDirectory {
 		inputDir = c.input
-		files, err = ioutil.ReadDir(c.input)
+		fileInfo, err = ioutil.ReadDir(c.input)
 		if err != nil {
-			return files, inputDir, c.inputType, c.inputSchema, err
+			return toInputFile(fileInfo), inputDir, c.inputType, c.inputSchema, err
 		}
 	} else {
 		inputDir = filepath.Dir(c.input)
@@ -55,7 +66,7 @@ func (c *Context) getFiles() ([]os.FileInfo, string, string, interface{}, error)
 		if err != nil {
 			return files, inputDir, c.inputType, c.inputSchema, err
 		}
-		files = append(files, fstat)
+		files = toInputFile([]os.FileInfo{fstat})
 	}
 	return files, inputDir, c.inputType, c.inputSchema, nil
 }
@@ -85,7 +96,11 @@ func (c *Context) Run() *RunOutput {
 			steps: copySteps(c.steps),
 			input: c.input,
 		}
-		filenameToProcess[k] = input.NewFileToProcess(inputDir+"/"+f.Name(), fileType, schema)
+		if inputDir != "" {
+			filenameToProcess[k] = input.NewFileToProcess(inputDir+"/"+f.name, fileType, schema)
+		} else {
+			filenameToProcess[k] = input.NewFileToProcess(f.name, fileType, schema)
+		}
 		// add waiting points, so we can sync later in the execution of the step
 		for _, step := range c.steps {
 			if step.getStepType() == "reducebykey" {
@@ -192,4 +207,12 @@ func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Co
 		}
 	}
 	return nil
+}
+
+func toInputFile(fileInfo []os.FileInfo) []InputFile {
+	ret := make([]InputFile, len(fileInfo))
+	for k := range fileInfo {
+		ret[k].name = fileInfo[k].Name()
+	}
+	return ret
 }
