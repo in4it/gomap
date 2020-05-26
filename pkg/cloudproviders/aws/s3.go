@@ -28,7 +28,7 @@ type S3Config struct {
 }
 
 func NewS3(config S3Config) *S3 {
-	region, err := getBucketRegion(config.Bucket)
+	region, err := GetBucketRegion(config.Bucket)
 	if err != nil {
 		readLogger.Errorf("getBucketRegion: %s", err)
 	}
@@ -43,7 +43,7 @@ func NewS3(config S3Config) *S3 {
 	return &S3{config: config, svc: svc, sess: sess}
 }
 
-func (s *S3) ListObjects() ([]string, error) {
+func (s *S3) ListObjects(prefix string) ([]string, error) {
 	var (
 		s3Objects []string
 		err       error
@@ -51,6 +51,7 @@ func (s *S3) ListObjects() ([]string, error) {
 
 	input := &s3.ListObjectsV2Input{
 		Bucket: aws.String(s.config.Bucket),
+		Prefix: aws.String(prefix),
 	}
 	pageNum := 0
 	err = s.svc.ListObjectsV2Pages(input,
@@ -93,7 +94,7 @@ func (s *S3) GetObjectScanner(key string) (*bufio.Scanner, error) {
 	}
 	return bufio.NewScanner(req.Body), nil
 }
-func getBucketRegion(bucketname string) (string, error) {
+func GetBucketRegion(bucketname string) (string, error) {
 	var (
 		res *http.Response
 		err error
@@ -105,4 +106,12 @@ func getBucketRegion(bucketname string) (string, error) {
 	}
 
 	return res.Header.Get("X-Amz-Bucket-Region"), nil
+}
+
+func GetAWSConfigForBucket(bucketname string) (*aws.Config, error) {
+	region, err := GetBucketRegion(bucketname)
+	if err != nil {
+		return nil, err
+	}
+	return &aws.Config{Region: aws.String(region)}, nil
 }

@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
+	"strings"
 	"sync"
 
+	"github.com/in4it/gomap/pkg/cloudproviders/aws"
 	"github.com/in4it/gomap/pkg/input"
+	"github.com/in4it/gomap/pkg/utils"
 )
 
 type InputFile struct {
@@ -37,36 +39,81 @@ func (c *Context) isFileOrDirectory(name string) (bool, error) {
 	return false, fmt.Errorf("File/Dir ormat not recognized")
 }
 
-func (c *Context) getFiles() ([]InputFile, string, string, interface{}, error) {
+func (c *Context) getS3Files() ([]InputFile, string, string, error) {
+	var (
+		files []InputFile
+	)
+	if strings.HasSuffix(c.input, "/") {
+		// s3 path is a directory
+		bucket, prefix, err := utils.GetS3BucketNameAndKey(c.input)
+		if err != nil {
+			return []InputFile{}, "", "", err
+		}
+		region, err := aws.GetBucketRegion(bucket)
+		if err != nil {
+			return []InputFile{}, "", "", err
+		}
+		s3 := aws.NewS3(aws.S3Config{Region: region, Bucket: bucket})
+		list, err := s3.ListObjects(prefix[1:]) // remove leading "/"
+		if err != nil {
+			return []InputFile{}, "", "", err
+		}
+		files = make([]InputFile, len(list))
+		for k := range list {
+			files[k].name = "s3://" + bucket + "/" + list[k]
+		}
+	} else {
+		files = []InputFile{{name: c.input}}
+	}
+	switch c.inputType {
+	case "file":
+		return files, "", "s3file", nil
+	case "parquet":
+		return files, "", "parquet", nil
+	default:
+		panic("file type not recognized")
+	}
+}
+func (c *Context) getLocalFiles() ([]InputFile, string, error) {
 	var (
 		isDirectory bool
-		err         error
-		files       []InputFile
-		fileInfo    []os.FileInfo
 		inputDir    string
+		err         error
+		fileInfo    []os.FileInfo
 	)
-
-	// is file s3 file
-	if len(c.input) > 5 && c.input[:5] == "s3://" {
-		return []InputFile{{name: c.input}}, "", "s3file", c.inputSchema, nil
-	}
-
 	if isDirectory, err = c.isFileOrDirectory(c.input); err != nil {
-		return files, inputDir, c.inputType, c.inputSchema, err
+		return []InputFile{}, inputDir, err
 	}
 	if isDirectory {
 		inputDir = c.input
 		fileInfo, err = ioutil.ReadDir(c.input)
 		if err != nil {
-			return toInputFile(fileInfo), inputDir, c.inputType, c.inputSchema, err
+			return []InputFile{}, inputDir, err
 		}
-	} else {
-		inputDir = filepath.Dir(c.input)
-		fstat, err := os.Stat(c.input)
-		if err != nil {
-			return files, inputDir, c.inputType, c.inputSchema, err
+		return toInputFile(fileInfo), inputDir, err
+	}
+	// not a directory
+	return []InputFile{{name: c.input}}, inputDir, nil
+}
+
+func (c *Context) getFiles() ([]InputFile, string, string, interface{}, error) {
+	var (
+		err      error
+		files    []InputFile
+		inputDir string
+	)
+
+	// handle s3 files
+	if len(c.input) > 5 && c.input[:5] == "s3://" {
+		var inputType string
+		if files, inputDir, inputType, err = c.getS3Files(); err != nil {
+			return []InputFile{}, "", inputType, c.inputSchema, err
 		}
-		files = toInputFile([]os.FileInfo{fstat})
+		return files, inputDir, inputType, c.inputSchema, nil
+	}
+	// handle local files
+	if files, inputDir, err = c.getLocalFiles(); err != nil {
+		return []InputFile{}, "", c.inputType, c.inputSchema, err
 	}
 	return files, inputDir, c.inputType, c.inputSchema, nil
 }

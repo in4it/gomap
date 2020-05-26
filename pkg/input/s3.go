@@ -3,9 +3,9 @@ package input
 import (
 	"bufio"
 	"fmt"
-	"strings"
 
 	"github.com/in4it/gomap/pkg/cloudproviders/aws"
+	"github.com/in4it/gomap/pkg/utils"
 )
 
 type S3File struct {
@@ -16,7 +16,7 @@ type S3File struct {
 }
 
 func NewS3File(fileToProcess FileToProcess) Input {
-	bucket, key, err := getS3BucketNameAndKey(fileToProcess.filename)
+	bucket, key, err := utils.GetS3BucketNameAndKey(fileToProcess.filename)
 	if err != nil {
 		panic(err)
 	}
@@ -25,18 +25,6 @@ func NewS3File(fileToProcess FileToProcess) Input {
 		s3:            aws.NewS3(aws.S3Config{Bucket: bucket}),
 		key:           key,
 	}
-}
-
-func getS3BucketNameAndKey(filename string) (string, string, error) {
-	if len(filename) < 6 || filename[:5] != "s3://" {
-		return "", "", fmt.Errorf("Invalid s3 URL: %s", filename)
-	}
-	pos := strings.IndexRune(filename[5:], '/')
-	if pos == -1 {
-		return "", "", fmt.Errorf("Invalid s3 URL: %s", filename)
-	}
-	bucketName := filename[5 : 5+pos]
-	return bucketName, filename[len(bucketName)+5:], nil
 }
 
 func (i *S3File) Init() error {
