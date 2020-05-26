@@ -1,0 +1,13 @@
+{
+    "IamInstanceProfile": {
+      "Arn": "arn:aws:iam::1234567890:instance-profile/gomap"
+    },
+    "InstanceType": "r4.large",
+    "NetworkInterfaces": [
+      {
+        "DeviceIndex": 0,
+        "Groups": ["sg-0123456789"],
+        "SubnetId": "subnet-01234567890"
+      }
+    ]  
+}

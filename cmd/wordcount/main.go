@@ -29,7 +29,7 @@ func main() {
 		//http.ListenAndServe("localhost:8080", nil)
 	}
 
-	if !fileExists(input) {
+	if !isS3Prefix(input) && !fileExists(input) {
 		fmt.Printf("Input file doesn't exist: %s\n", input)
 		os.Exit(1)
 	}
@@ -53,4 +53,11 @@ func fileExists(filename string) bool {
 		return false
 	}
 	return true
+}
+
+func isS3Prefix(input string) bool {
+	if len(input) >= 5 && input[:5] == "s3://" {
+		return true
+	}
+	return false
 }

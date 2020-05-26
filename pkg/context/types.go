@@ -2,6 +2,8 @@ package context
 
 import (
 	"bytes"
+
+	"github.com/in4it/gomap/pkg/input"
 )
 
 type Context struct {
@@ -18,7 +20,7 @@ type Context struct {
 
 type Step interface {
 	do(partition, totalPartitions int) error
-	setInput(inputFile *Input)
+	setInput(inputFile input.Input)
 	getOutputKV() (bytes.Buffer, bytes.Buffer)
 	getOutputType() string
 	getStats() StepStats
@@ -28,10 +30,4 @@ type Step interface {
 
 type StepStats struct {
 	invoked int
-}
-
-type fileToProcess struct {
-	filename string
-	fileType string
-	schema   interface{}
 }

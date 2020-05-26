@@ -3,13 +3,14 @@ package context
 import (
 	"bytes"
 
+	"github.com/in4it/gomap/pkg/input"
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/in4it/gomap/pkg/utils"
 )
 
 type Map struct {
 	function  types.MapFunction
-	inputFile *Input
+	inputFile input.Input
 	output    bytes.Buffer
 	invoked   int
 }
@@ -55,6 +56,6 @@ func (m *Map) getStepType() string {
 func (m *Map) getFunction() interface{} {
 	return m.function
 }
-func (m *Map) setInput(inputFile *Input) {
+func (m *Map) setInput(inputFile input.Input) {
 	m.inputFile = inputFile
 }

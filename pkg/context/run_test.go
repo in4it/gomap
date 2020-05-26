@@ -1,6 +1,7 @@
 package context
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -214,4 +215,53 @@ func TestRunSingleParquetFile(t *testing.T) {
 			return
 		}
 	}
+}
+
+func TestS3Input(t *testing.T) {
+	// skip test if s3 testfile is not set
+	if os.Getenv("S3_TESTFILE") == "" {
+		t.Skip()
+		return
+	}
+	c := New()
+	keys, values := c.Read(os.Getenv("S3_TESTFILE")).FlatMap(func(str types.RawInput) []types.RawOutput {
+		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
+	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
+		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
+	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
+		return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
+	}).Run().GetKV()
+
+	if c.err != nil {
+		t.Errorf("Error: %s", c.err)
+	}
+
+	output := make(map[string]string)
+
+	for k, key := range keys {
+		output[string(key)] = string(values[k])
+	}
+
+	expected := map[string]string{
+		"is":       "2",
+		"a":        "1",
+		"sentence": "2",
+		"another":  "1",
+		"this":     "2",
+	}
+
+	for k1, v1 := range expected {
+		found := false
+		for k2, v2 := range output {
+			if v1 == v2 && k1 == k2 {
+				found = true
+			}
+
+		}
+		if !found {
+			t.Errorf("Not found: %s: %s", k1, v1)
+			return
+		}
+	}
+
 }

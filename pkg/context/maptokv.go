@@ -3,13 +3,14 @@ package context
 import (
 	"bytes"
 
+	"github.com/in4it/gomap/pkg/input"
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/in4it/gomap/pkg/utils"
 )
 
 type MapToKV struct {
 	function    types.MapToKVFunction
-	inputFile   *Input
+	inputFile   input.Input
 	outputKey   bytes.Buffer
 	outputValue bytes.Buffer
 	invoked     int
@@ -57,6 +58,6 @@ func (m *MapToKV) getStepType() string {
 func (m *MapToKV) getFunction() interface{} {
 	return m.function
 }
-func (m *MapToKV) setInput(inputFile *Input) {
+func (m *MapToKV) setInput(inputFile input.Input) {
 	m.inputFile = inputFile
 }

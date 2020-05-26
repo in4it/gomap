@@ -7,7 +7,13 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/in4it/gomap/pkg/input"
 )
+
+type InputFile struct {
+	name string
+}
 
 func New() *Context {
 	return &Context{}
@@ -31,21 +37,28 @@ func (c *Context) isFileOrDirectory(name string) (bool, error) {
 	return false, fmt.Errorf("File/Dir ormat not recognized")
 }
 
-func (c *Context) getFiles() ([]os.FileInfo, string, string, interface{}, error) {
+func (c *Context) getFiles() ([]InputFile, string, string, interface{}, error) {
 	var (
 		isDirectory bool
 		err         error
-		files       []os.FileInfo
+		files       []InputFile
+		fileInfo    []os.FileInfo
 		inputDir    string
 	)
+
+	// is file s3 file
+	if len(c.input) > 5 && c.input[:5] == "s3://" {
+		return []InputFile{{name: c.input}}, "", "s3file", c.inputSchema, nil
+	}
+
 	if isDirectory, err = c.isFileOrDirectory(c.input); err != nil {
 		return files, inputDir, c.inputType, c.inputSchema, err
 	}
 	if isDirectory {
 		inputDir = c.input
-		files, err = ioutil.ReadDir(c.input)
+		fileInfo, err = ioutil.ReadDir(c.input)
 		if err != nil {
-			return files, inputDir, c.inputType, c.inputSchema, err
+			return toInputFile(fileInfo), inputDir, c.inputType, c.inputSchema, err
 		}
 	} else {
 		inputDir = filepath.Dir(c.input)
@@ -53,7 +66,7 @@ func (c *Context) getFiles() ([]os.FileInfo, string, string, interface{}, error)
 		if err != nil {
 			return files, inputDir, c.inputType, c.inputSchema, err
 		}
-		files = append(files, fstat)
+		files = toInputFile([]os.FileInfo{fstat})
 	}
 	return files, inputDir, c.inputType, c.inputSchema, nil
 }
@@ -63,7 +76,7 @@ func (c *Context) Run() *RunOutput {
 		runOutput         *RunOutput
 		waitForContext    sync.WaitGroup
 		waitForStep       sync.WaitGroup
-		filenameToProcess []fileToProcess
+		filenameToProcess []input.FileToProcess
 	)
 
 	// get list of files
@@ -75,7 +88,7 @@ func (c *Context) Run() *RunOutput {
 	// initialize variables
 	runOutput = &RunOutput{}
 	runOutput.Contexts = make([]*Context, len(files))
-	filenameToProcess = make([]fileToProcess, len(files))
+	filenameToProcess = make([]input.FileToProcess, len(files))
 
 	// loop over files, prepare to run different contexts in goroutines
 	for k, f := range files {
@@ -83,7 +96,11 @@ func (c *Context) Run() *RunOutput {
 			steps: copySteps(c.steps),
 			input: c.input,
 		}
-		filenameToProcess[k] = fileToProcess{filename: inputDir + "/" + f.Name(), fileType: fileType, schema: schema}
+		if inputDir != "" {
+			filenameToProcess[k] = input.NewFileToProcess(inputDir+"/"+f.name, fileType, schema)
+		} else {
+			filenameToProcess[k] = input.NewFileToProcess(f.name, fileType, schema)
+		}
 		// add waiting points, so we can sync later in the execution of the step
 		for _, step := range c.steps {
 			if step.getStepType() == "reducebykey" {
@@ -93,7 +110,7 @@ func (c *Context) Run() *RunOutput {
 	}
 	for k := range runOutput.Contexts {
 		waitForContext.Add(1)
-		go func(partition int, file fileToProcess) {
+		go func(partition int, file input.FileToProcess) {
 			runFile(partition, file, &waitForContext, &waitForStep, runOutput.Contexts)
 		}(k, filenameToProcess[k])
 	}
@@ -110,19 +127,18 @@ func (c *Context) Run() *RunOutput {
 	return runOutput
 }
 
-func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.WaitGroup, waitForStep *sync.WaitGroup, contexts []*Context) {
+func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *sync.WaitGroup, waitForStep *sync.WaitGroup, contexts []*Context) {
 	var (
 		bufferKey   bytes.Buffer
 		bufferValue bytes.Buffer
 		err         error
-		inputFile   *Input
+		inputFile   input.Input
 	)
 
 	defer waitForContext.Done()
 
-	fmt.Printf("runFile: %s (partition %d)\n", fileToProcess.filename, partition+1)
-	inputFile = NewInput(fileToProcess)
-	if err = inputFile.InitFile(); err != nil {
+	inputFile = input.NewInput(fileToProcess)
+	if err = inputFile.Init(); err != nil {
 		contexts[partition].err = err
 		// TODO: provide better error control
 		panic(err)
@@ -147,7 +163,7 @@ func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.Wa
 			contexts[partition].outputValue = bufferValue
 			bufferKey = bytes.Buffer{}
 			bufferValue = bytes.Buffer{}
-			if err := handleReduceSync(partition, waitForStep, contexts, inputFile, step); err != nil {
+			if err := handleReduceSync(partition, waitForStep, contexts, &inputFile, step); err != nil {
 				contexts[partition].err = err
 				return
 			}
@@ -157,21 +173,20 @@ func runFile(partition int, fileToProcess fileToProcess, waitForContext *sync.Wa
 			bufferKey, bufferValue = step.getOutputKV()
 		}
 		// set inputfile to new input for next step
-		inputFile.currentType = step.getOutputType()
-		if inputFile.currentType == "value" {
-			inputFile.SetBufferValue(&bufferValue)
-		} else {
-			inputFile.SetBufferKey(&bufferKey)
-			inputFile.SetBufferValue(&bufferValue)
+		switch step.getOutputType() {
+		case "value":
+			inputFile = input.NewValue(&bufferValue)
+		case "kv":
+			inputFile = input.NewKeyValue(&bufferKey, &bufferValue)
 		}
 	}
 	contexts[partition].outputKey = bufferKey
 	contexts[partition].outputValue = bufferValue
-	contexts[partition].outputType = inputFile.currentType
+	contexts[partition].outputType = inputFile.GetType()
 	return
 }
 
-func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Context, inputFile *Input, step Step) error {
+func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Context, inputFile *input.Input, step Step) error {
 	waitForStep.Done()
 	waitForStep.Wait()
 	var (
@@ -186,11 +201,18 @@ func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Co
 			contexts[k].outputKey = bytes.Buffer{}
 			contexts[k].outputValue = bytes.Buffer{}
 		}
-		inputFile.SetBufferKey(&bufferKey)
-		inputFile.SetBufferValue(&bufferValue)
+		step.setInput(input.NewKeyValue(&bufferKey, &bufferValue))
 		if err := step.do(partition, len(contexts)); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func toInputFile(fileInfo []os.FileInfo) []InputFile {
+	ret := make([]InputFile, len(fileInfo))
+	for k := range fileInfo {
+		ret[k].name = fileInfo[k].Name()
+	}
+	return ret
 }
