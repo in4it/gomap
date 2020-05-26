@@ -1,8 +1,13 @@
 package input
 
 import (
+	"context"
+
+	"github.com/in4it/gomap/pkg/cloudproviders/aws"
+	"github.com/in4it/gomap/pkg/utils"
 	"github.com/vmihailenco/msgpack"
 	"github.com/xitongsys/parquet-go-source/local"
+	"github.com/xitongsys/parquet-go-source/s3"
 	"github.com/xitongsys/parquet-go/reader"
 	parquet "github.com/xitongsys/parquet-go/source"
 )
@@ -23,9 +28,22 @@ func NewParquetFile(fileToProcess FileToProcess) Input {
 
 func (i *ParquetFile) Init() error {
 	var err error
-	i.parquetFileReader, err = local.NewLocalFileReader(i.fileToProcess.filename)
-	if err != nil {
-		return err
+	if len(i.fileToProcess.filename) > 5 && i.fileToProcess.filename[:5] == "s3://" {
+		bucket, key, err := utils.GetS3BucketNameAndKey(i.fileToProcess.filename)
+		ctx := context.Background()
+		awsConfig, err := aws.GetAWSConfigForBucket(bucket)
+		if err != nil {
+			return err
+		}
+		i.parquetFileReader, err = s3.NewS3FileReader(ctx, bucket, key, awsConfig)
+		if err != nil {
+			return err
+		}
+	} else {
+		i.parquetFileReader, err = local.NewLocalFileReader(i.fileToProcess.filename)
+		if err != nil {
+			return err
+		}
 	}
 	i.parquetReader, err = reader.NewParquetReader(i.parquetFileReader, i.fileToProcess.schema, 4)
 	if err != nil {

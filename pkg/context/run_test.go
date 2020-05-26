@@ -1,6 +1,7 @@
 package context
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -173,46 +174,71 @@ type ParquetLine struct {
 	Count int64  `parquet:"name=count, type=INT64"`
 }
 
-func TestRunSingleParquetFile(t *testing.T) {
-	c := New()
-
-	keys, values := c.ReadParquet("testdata/words.parquet", new(ParquetLine)).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
-		var line ParquetLine
-		err := utils.RawDecode(input, &line)
-		if err != nil {
-			panic(err)
-		}
-		return utils.StringToRawOutput(line.Word), utils.Int64ToRawOutput(line.Count)
-	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
-		return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
-	}).Run().GetKV()
-
-	if c.err != nil {
-		t.Errorf("Error: %s", c.err)
+func TestRunParquetFile(t *testing.T) {
+	scenarios := []string{"testdata/words.parquet"}
+	if os.Getenv("S3_TESTFILE_PARQUET") != "" {
+		fmt.Printf("S3_TESTFILE_PARQUET found, including s3 parquet test\n")
+		scenarios = append(scenarios, os.Getenv("S3_TESTFILE_PARQUET"))
 	}
-
-	output := make(map[string]string)
-
-	for k, key := range keys {
-		output[string(key)] = string(values[k])
+	if os.Getenv("S3_TESTDIR_PARQUET") != "" {
+		fmt.Printf("S3_TESTDIR_PARQUET found, including s3 parquet directory test\n")
+		scenarios = append(scenarios, os.Getenv("S3_TESTDIR_PARQUET"))
 	}
-	expected := map[string]string{
+	expected := make([]map[string]string, len(scenarios))
+	expected[0] = map[string]string{
 		"is":       "10",
 		"sentence": "2",
 		"a":        "26",
 		"this":     "6",
 	}
-	for k1, v1 := range expected {
-		found := false
-		for k2, v2 := range output {
-			if v1 == v2 && k1 == k2 {
-				found = true
-			}
+	expected[1] = map[string]string{
+		"is":       "10",
+		"sentence": "2",
+		"a":        "26",
+		"this":     "6",
+	}
+	expected[2] = map[string]string{
+		"is":       "20",
+		"sentence": "4",
+		"a":        "52",
+		"this":     "12",
+	}
 
+	for scenario, inputFile := range scenarios {
+		c := New()
+		keys, values := c.ReadParquet(inputFile, new(ParquetLine)).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
+			var line ParquetLine
+			err := utils.RawDecode(input, &line)
+			if err != nil {
+				panic(err)
+			}
+			return utils.StringToRawOutput(line.Word), utils.Int64ToRawOutput(line.Count)
+		}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
+			return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
+		}).Run().GetKV()
+
+		if c.err != nil {
+			t.Errorf("Error: %s", c.err)
 		}
-		if !found {
-			t.Errorf("Not found: %s: %s", k1, v1)
-			return
+
+		output := make(map[string]string)
+
+		for k, key := range keys {
+			output[string(key)] = string(values[k])
+		}
+
+		for k1, v1 := range expected[scenario] {
+			found := false
+			for k2, v2 := range output {
+				if v1 == v2 && k1 == k2 {
+					found = true
+				}
+
+			}
+			if !found {
+				t.Errorf("Not found: %s: %s", k1, v1)
+				return
+			}
 		}
 	}
 }

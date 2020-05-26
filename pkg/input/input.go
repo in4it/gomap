@@ -4,7 +4,7 @@ func NewInput(fileToProcess FileToProcess) Input {
 	switch fileToProcess.fileType {
 	case "parquet":
 		return NewParquetFile(fileToProcess)
-	case "localfile":
+	case "file":
 		return NewLocalFile(fileToProcess)
 	case "s3file":
 		return NewS3File(fileToProcess)
