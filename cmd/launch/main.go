@@ -10,24 +10,43 @@ import (
 	"github.com/in4it/gomap/pkg/cloudproviders/aws"
 )
 
+func usage(err string) {
+	fmt.Printf("Error: %s", err)
+	flag.Usage()
+	os.Exit(1)
+}
+
 func main() {
 	var (
 		launchSpecification string
-		input               string
 		executable          string
+		cmd                 string
 		region              string
 	)
 
 	flag.StringVar(&launchSpecification, "launchSpecification", "", "launchSpecification")
-	flag.StringVar(&input, "input", "", "input")
-	flag.StringVar(&executable, "source", "", "source")
+	flag.StringVar(&executable, "executable", "", "executable")
+	flag.StringVar(&cmd, "cmd", "", "cmd")
 	flag.StringVar(&region, "region", "", "region")
 
 	flag.Parse()
 
+	if executable == "" {
+		usage("executable not set")
+	}
+	if cmd == "" {
+		usage("cmd not set")
+	}
+	if launchSpecification == "" {
+		usage("launchSpecification not set")
+	}
+	if region == "" {
+		usage("region not set")
+	}
+
 	s := aws.NewSpotInstance(aws.SpotInstanceConfig{
-		Input:      input,
 		Executable: executable,
+		Cmd:        cmd,
 		Region:     region,
 	})
 
