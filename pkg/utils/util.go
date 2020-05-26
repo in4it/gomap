@@ -29,9 +29,6 @@ func RawEncode(item interface{}) []byte {
 	return b
 }
 func RawDecode(input []byte, item interface{}) error {
-	if string(input) == "PAR1" {
-		return nil
-	}
 	return msgpack.Unmarshal(input, &item)
 }
 

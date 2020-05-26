@@ -175,33 +175,37 @@ type ParquetLine struct {
 }
 
 func TestRunParquetFile(t *testing.T) {
+	expected := []map[string]string{}
+
+	// first scenario
 	scenarios := []string{"testdata/words.parquet"}
+	expected = append(expected, map[string]string{
+		"is":       "10",
+		"sentence": "2",
+		"a":        "26",
+		"this":     "6",
+	})
+	// second scenario
 	if os.Getenv("S3_TESTFILE_PARQUET") != "" {
 		fmt.Printf("S3_TESTFILE_PARQUET found, including s3 parquet test\n")
 		scenarios = append(scenarios, os.Getenv("S3_TESTFILE_PARQUET"))
+		expected = append(expected, map[string]string{
+			"is":       "10",
+			"sentence": "2",
+			"a":        "26",
+			"this":     "6",
+		})
 	}
+	// third scenario
 	if os.Getenv("S3_TESTDIR_PARQUET") != "" {
 		fmt.Printf("S3_TESTDIR_PARQUET found, including s3 parquet directory test\n")
 		scenarios = append(scenarios, os.Getenv("S3_TESTDIR_PARQUET"))
-	}
-	expected := make([]map[string]string, len(scenarios))
-	expected[0] = map[string]string{
-		"is":       "10",
-		"sentence": "2",
-		"a":        "26",
-		"this":     "6",
-	}
-	expected[1] = map[string]string{
-		"is":       "10",
-		"sentence": "2",
-		"a":        "26",
-		"this":     "6",
-	}
-	expected[2] = map[string]string{
-		"is":       "20",
-		"sentence": "4",
-		"a":        "52",
-		"this":     "12",
+		expected = append(expected, map[string]string{
+			"is":       "20",
+			"sentence": "4",
+			"a":        "52",
+			"this":     "12",
+		})
 	}
 
 	for scenario, inputFile := range scenarios {
@@ -290,4 +294,57 @@ func TestS3Input(t *testing.T) {
 		}
 	}
 
+}
+
+func TestParquetPartition(t *testing.T) {
+	if os.Getenv("S3_TESTDIR_PARQUET") == "" {
+		t.Skip()
+	}
+
+	c := New()
+	keys, values := c.ReadParquet(os.Getenv("S3_TESTDIR_PARQUET"), new(ParquetLine)).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
+		var line ParquetLine
+		err := utils.RawDecode(input, &line)
+		if err != nil {
+			panic(err)
+		}
+		return utils.StringToRawOutput(line.Word), utils.RawEncode([]ParquetLine{line})
+	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
+		var line1 []ParquetLine
+		var line2 []ParquetLine
+		err := utils.RawDecode(a, &line1)
+		if err != nil {
+			panic(err)
+		}
+		err = utils.RawDecode(b, &line2)
+		if err != nil {
+			panic(err)
+		}
+		return utils.RawEncode(append(line1, line2...))
+	}).Run().GetKV()
+
+	if c.err != nil {
+		t.Errorf("Error: %s", c.err)
+	}
+	output := make(map[string][]ParquetLine)
+
+	for k, key := range keys {
+		var lines []ParquetLine
+		err := utils.RawDecode(values[k], &lines)
+		if err != nil {
+			panic(err)
+		}
+
+		output[string(key)] = lines
+	}
+	found := false
+	for k, v := range output {
+		// TODO: check all instead of one element
+		if k == "this" && len(v) == 8 {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("Expected element not found")
+	}
 }
