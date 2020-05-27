@@ -1,4 +1,4 @@
-package context
+package dataset
 
 import (
 	"bytes"
@@ -9,25 +9,21 @@ import (
 )
 
 type Map struct {
-	function  types.MapFunction
+	Function  types.MapFunction
 	inputFile input.Input
 	output    bytes.Buffer
 	invoked   int
 }
 
-func (c *Context) Map(fn types.MapFunction) *Context {
-	c.AddStep(newMap(fn))
-	return c
-}
-func newMap(fn types.MapFunction) *Map {
+func NewMap(fn types.MapFunction) *Map {
 	return &Map{
-		function: fn,
+		Function: fn,
 	}
 }
-func (m *Map) do(partition, totalPartitions int) error {
+func (m *Map) Do(partition, totalPartitions int) error {
 	for m.inputFile.Scan() {
 		_, value := m.inputFile.Bytes()
-		res := m.function(value)
+		res := m.Function(value)
 		m.output.Write(utils.PutRecord(res))
 	}
 
@@ -37,25 +33,25 @@ func (m *Map) do(partition, totalPartitions int) error {
 	return nil
 }
 
-func (m *Map) getOutputKV() (bytes.Buffer, bytes.Buffer) {
+func (m *Map) GetOutputKV() (bytes.Buffer, bytes.Buffer) {
 	return bytes.Buffer{}, m.output
 }
-func (m *Map) getOutputType() string {
+func (m *Map) GetOutputType() string {
 	return "value"
 }
 
-func (m *Map) getStats() StepStats {
+func (m *Map) GetStats() StepStats {
 	return StepStats{
 		invoked: m.invoked,
 	}
 }
-func (m *Map) getStepType() string {
+func (m *Map) GetStepType() string {
 	return "map"
 }
 
-func (m *Map) getFunction() interface{} {
-	return m.function
+func (m *Map) GetFunction() interface{} {
+	return m.Function
 }
-func (m *Map) setInput(inputFile input.Input) {
+func (m *Map) SetInput(inputFile input.Input) {
 	m.inputFile = inputFile
 }

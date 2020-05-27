@@ -1,4 +1,4 @@
-package context
+package dataset
 
 import (
 	"bytes"
@@ -9,27 +9,23 @@ import (
 )
 
 type MapToKV struct {
-	function    types.MapToKVFunction
+	Function    types.MapToKVFunction
 	inputFile   input.Input
 	outputKey   bytes.Buffer
 	outputValue bytes.Buffer
 	invoked     int
 }
 
-func (c *Context) MapToKV(fn types.MapToKVFunction) *Context {
-	c.AddStep(newMapToKV(fn))
-	return c
-}
-func newMapToKV(fn types.MapToKVFunction) *MapToKV {
+func NewMapToKV(fn types.MapToKVFunction) *MapToKV {
 	return &MapToKV{
-		function: fn,
+		Function: fn,
 	}
 }
-func (m *MapToKV) do(partition, totalPartitions int) error {
+func (m *MapToKV) Do(partition, totalPartitions int) error {
 	for m.inputFile.Scan() {
 		m.invoked++
 		_, inputValue := m.inputFile.Bytes()
-		key, value := m.function(inputValue)
+		key, value := m.Function(inputValue)
 		m.outputKey.Write(utils.PutRecord(key))
 		m.outputValue.Write(utils.PutRecord(value))
 	}
@@ -40,24 +36,24 @@ func (m *MapToKV) do(partition, totalPartitions int) error {
 	return nil
 }
 
-func (m *MapToKV) getOutputKV() (bytes.Buffer, bytes.Buffer) {
+func (m *MapToKV) GetOutputKV() (bytes.Buffer, bytes.Buffer) {
 	return m.outputKey, m.outputValue
 }
-func (m *MapToKV) getOutputType() string {
+func (m *MapToKV) GetOutputType() string {
 	return "kv"
 }
 
-func (m *MapToKV) getStats() StepStats {
+func (m *MapToKV) GetStats() StepStats {
 	return StepStats{
 		invoked: m.invoked,
 	}
 }
-func (m *MapToKV) getStepType() string {
+func (m *MapToKV) GetStepType() string {
 	return "maptokv"
 }
-func (m *MapToKV) getFunction() interface{} {
-	return m.function
+func (m *MapToKV) GetFunction() interface{} {
+	return m.Function
 }
-func (m *MapToKV) setInput(inputFile input.Input) {
+func (m *MapToKV) SetInput(inputFile input.Input) {
 	m.inputFile = inputFile
 }

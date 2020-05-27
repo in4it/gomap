@@ -248,30 +248,6 @@ func TestRunParquetFile(t *testing.T) {
 }
 
 func TestS3Input(t *testing.T) {
-	// skip test if s3 testfile is not set
-	if os.Getenv("S3_TESTFILE") == "" {
-		t.Skip()
-		return
-	}
-	c := New()
-	keys, values := c.Read(os.Getenv("S3_TESTFILE")).FlatMap(func(str types.RawInput) []types.RawOutput {
-		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
-	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
-		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
-	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
-		return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
-	}).Run().GetKV()
-
-	if c.err != nil {
-		t.Errorf("Error: %s", c.err)
-	}
-
-	output := make(map[string]string)
-
-	for k, key := range keys {
-		output[string(key)] = string(values[k])
-	}
-
 	expected := map[string]string{
 		"is":       "2",
 		"a":        "1",
@@ -280,18 +256,33 @@ func TestS3Input(t *testing.T) {
 		"this":     "2",
 	}
 
-	for k1, v1 := range expected {
+	// skip test if s3 testfile is not set
+	if os.Getenv("S3_TESTFILE") == "" {
+		t.Skip()
+		return
+	}
+	c := New()
+	c.Read(os.Getenv("S3_TESTFILE")).FlatMap(func(str types.RawInput) []types.RawOutput {
+		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
+	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
+		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
+	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
+		return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
+	}).Run().Foreach(func(key, value types.RawOutput) {
 		found := false
-		for k2, v2 := range output {
-			if v1 == v2 && k1 == k2 {
+		for k1, v1 := range expected {
+			if k1 == string(key) && v1 == string(value) {
 				found = true
 			}
-
 		}
 		if !found {
-			t.Errorf("Not found: %s: %s", k1, v1)
+			t.Errorf("Not found: %s: %s", string(key), string(value))
 			return
 		}
+	})
+
+	if c.err != nil {
+		t.Errorf("Error: %s", c.err)
 	}
 
 }
@@ -301,8 +292,10 @@ func TestParquetPartition(t *testing.T) {
 		t.Skip()
 	}
 
+	found := false
+
 	c := New()
-	keys, values := c.ReadParquet(os.Getenv("S3_TESTDIR_PARQUET"), new(ParquetLine)).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
+	c.ReadParquet(os.Getenv("S3_TESTDIR_PARQUET"), new(ParquetLine)).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		var line ParquetLine
 		err := utils.RawDecode(input, &line)
 		if err != nil {
@@ -321,29 +314,23 @@ func TestParquetPartition(t *testing.T) {
 			panic(err)
 		}
 		return utils.RawEncode(append(line1, line2...))
-	}).Run().GetKV()
+	}).Run().Foreach(func(key, value types.RawOutput) {
+		var lines []ParquetLine
+		err := utils.RawDecode(value, &lines)
+		if err != nil {
+			panic(err)
+		}
+		// TODO: check all instead of one element
+		if string(key) == "this" && len(lines) == 8 {
+			found = true
+		}
+
+	})
 
 	if c.err != nil {
 		t.Errorf("Error: %s", c.err)
 	}
-	output := make(map[string][]ParquetLine)
 
-	for k, key := range keys {
-		var lines []ParquetLine
-		err := utils.RawDecode(values[k], &lines)
-		if err != nil {
-			panic(err)
-		}
-
-		output[string(key)] = lines
-	}
-	found := false
-	for k, v := range output {
-		// TODO: check all instead of one element
-		if k == "this" && len(v) == 8 {
-			found = true
-		}
-	}
 	if !found {
 		t.Errorf("Expected element not found")
 	}

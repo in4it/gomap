@@ -65,3 +65,26 @@ func (r *RunOutput) GetKV() ([]types.RawOutput, []types.RawOutput) {
 	}
 	return keys, values
 }
+func (r *RunOutput) Foreach(fn types.ForeachFunction) {
+	for _, context := range r.Contexts {
+		if context.outputType == "kv" {
+			for {
+				moreRecords, keyRecord, err := utils.ReadRecord(&context.outputKey)
+				if err != nil {
+					panic(err)
+				}
+				if !moreRecords {
+					break
+				}
+				moreValueRecords, valueRecord, err := utils.ReadRecord(&context.outputValue)
+				if err != nil {
+					panic(err)
+				}
+				if !moreValueRecords {
+					break
+				}
+				fn(keyRecord, valueRecord)
+			}
+		}
+	}
+}

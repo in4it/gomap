@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/in4it/gomap/pkg/cloudproviders/aws"
+	"github.com/in4it/gomap/pkg/dataset"
 	"github.com/in4it/gomap/pkg/input"
 	"github.com/in4it/gomap/pkg/utils"
 )
@@ -150,7 +151,7 @@ func (c *Context) Run() *RunOutput {
 		}
 		// add waiting points, so we can sync later in the execution of the step
 		for _, step := range c.steps {
-			if step.getStepType() == "reducebykey" {
+			if step.GetStepType() == "reducebykey" {
 				waitForStep.Add(1)
 			}
 		}
@@ -193,18 +194,18 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 	}
 
 	for _, step := range contexts[partition].steps {
-		step.setInput(inputFile)
+		step.SetInput(inputFile)
 
-		if err := step.do(partition, len(contexts)); err != nil {
+		if err := step.Do(partition, len(contexts)); err != nil {
 			contexts[partition].err = err
 			return
 		}
 		// file can be closed now
 		inputFile.Close()
 		// gather input
-		bufferKey, bufferValue = step.getOutputKV()
+		bufferKey, bufferValue = step.GetOutputKV()
 
-		if step.getStepType() == "reducebykey" {
+		if step.GetStepType() == "reducebykey" {
 			// make buffers visible to all contexts
 			contexts[partition].outputKey = bufferKey
 			contexts[partition].outputValue = bufferValue
@@ -217,10 +218,10 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 			if partition != 0 {
 				return
 			}
-			bufferKey, bufferValue = step.getOutputKV()
+			bufferKey, bufferValue = step.GetOutputKV()
 		}
 		// set inputfile to new input for next step
-		switch step.getOutputType() {
+		switch step.GetOutputType() {
 		case "value":
 			inputFile = input.NewValue(&bufferValue)
 		case "kv":
@@ -233,7 +234,7 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 	return
 }
 
-func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Context, inputFile *input.Input, step Step) error {
+func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Context, inputFile *input.Input, step dataset.Step) error {
 	waitForStep.Done()
 	waitForStep.Wait()
 	var (
@@ -248,8 +249,8 @@ func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Co
 			contexts[k].outputKey = bytes.Buffer{}
 			contexts[k].outputValue = bytes.Buffer{}
 		}
-		step.setInput(input.NewKeyValue(&bufferKey, &bufferValue))
-		if err := step.do(partition, len(contexts)); err != nil {
+		step.SetInput(input.NewKeyValue(&bufferKey, &bufferValue))
+		if err := step.Do(partition, len(contexts)); err != nil {
 			return err
 		}
 	}
