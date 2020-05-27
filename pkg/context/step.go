@@ -4,32 +4,33 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/in4it/gomap/pkg/dataset"
 	"github.com/in4it/gomap/pkg/types"
 )
 
-func (d *Context) AddStep(s Step) {
+func (d *Context) AddStep(s dataset.Step) {
 	d.steps = append(d.steps, s)
 }
 
-func copySteps(input []Step) []Step {
-	res := make([]Step, len(input))
+func copySteps(input []dataset.Step) []dataset.Step {
+	res := make([]dataset.Step, len(input))
 	for k, v := range input {
 		switch t := reflect.TypeOf(v).String(); t {
-		case "*context.FlatMap":
-			res[k] = &FlatMap{
-				function: v.getFunction().(types.FlatMapFunction),
+		case "*dataset.FlatMap":
+			res[k] = &dataset.FlatMap{
+				Function: v.GetFunction().(types.FlatMapFunction),
 			}
-		case "*context.MapToKV":
-			res[k] = &MapToKV{
-				function: v.getFunction().(types.MapToKVFunction),
+		case "*dataset.MapToKV":
+			res[k] = &dataset.MapToKV{
+				Function: v.GetFunction().(types.MapToKVFunction),
 			}
-		case "*context.ReduceByKey":
-			res[k] = &ReduceByKey{
-				function: v.getFunction().(types.ReduceByKeyFunction),
+		case "*dataset.ReduceByKey":
+			res[k] = &dataset.ReduceByKey{
+				Function: v.GetFunction().(types.ReduceByKeyFunction),
 			}
-		case "*context.Map":
-			res[k] = &Map{
-				function: v.getFunction().(types.MapFunction),
+		case "*dataset.Map":
+			res[k] = &dataset.Map{
+				Function: v.GetFunction().(types.MapFunction),
 			}
 		default:
 			panic(fmt.Errorf("Unrecognized type: %s", reflect.TypeOf(v)))

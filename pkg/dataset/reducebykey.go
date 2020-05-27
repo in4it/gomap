@@ -1,4 +1,4 @@
-package context
+package dataset
 
 import (
 	"bytes"
@@ -9,23 +9,19 @@ import (
 )
 
 type ReduceByKey struct {
-	function    types.ReduceByKeyFunction
+	Function    types.ReduceByKeyFunction
 	inputFile   input.Input
 	outputKey   bytes.Buffer
 	outputValue bytes.Buffer
 	invoked     int
 }
 
-func (c *Context) ReduceByKey(fn types.ReduceByKeyFunction) *Context {
-	c.AddStep(newReduceByKey(fn))
-	return c
-}
-func newReduceByKey(fn types.ReduceByKeyFunction) *ReduceByKey {
+func NewReduceByKey(fn types.ReduceByKeyFunction) *ReduceByKey {
 	return &ReduceByKey{
-		function: fn,
+		Function: fn,
 	}
 }
-func (m *ReduceByKey) do(partition, totalPartitions int) error {
+func (m *ReduceByKey) Do(partition, totalPartitions int) error {
 	m.outputKey = bytes.Buffer{}
 	m.outputValue = bytes.Buffer{}
 
@@ -35,7 +31,7 @@ func (m *ReduceByKey) do(partition, totalPartitions int) error {
 		key, value := m.inputFile.Bytes()
 		m.invoked++
 		if reducedValue, ok := reduced[string(key)]; ok {
-			reduced[string(key)] = m.function(reducedValue, value)
+			reduced[string(key)] = m.Function(reducedValue, value)
 		} else {
 			reduced[string(key)] = value
 		}
@@ -55,26 +51,26 @@ func (m *ReduceByKey) do(partition, totalPartitions int) error {
 	return nil
 }
 
-func (m *ReduceByKey) getOutput() bytes.Buffer {
+func (m *ReduceByKey) GetOutput() bytes.Buffer {
 	return bytes.Buffer{}
 }
-func (m *ReduceByKey) getOutputKV() (bytes.Buffer, bytes.Buffer) {
+func (m *ReduceByKey) GetOutputKV() (bytes.Buffer, bytes.Buffer) {
 	return m.outputKey, m.outputValue
 }
-func (m *ReduceByKey) getOutputType() string {
+func (m *ReduceByKey) GetOutputType() string {
 	return "kv"
 }
-func (m *ReduceByKey) getStats() StepStats {
+func (m *ReduceByKey) GetStats() StepStats {
 	return StepStats{
 		invoked: m.invoked,
 	}
 }
-func (m *ReduceByKey) getStepType() string {
+func (m *ReduceByKey) GetStepType() string {
 	return "reducebykey"
 }
-func (m *ReduceByKey) getFunction() interface{} {
-	return m.function
+func (m *ReduceByKey) GetFunction() interface{} {
+	return m.Function
 }
-func (m *ReduceByKey) setInput(inputFile input.Input) {
+func (m *ReduceByKey) SetInput(inputFile input.Input) {
 	m.inputFile = inputFile
 }

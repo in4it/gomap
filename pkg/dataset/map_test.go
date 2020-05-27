@@ -1,4 +1,4 @@
-package context
+package dataset
 
 import (
 	"bytes"
@@ -16,16 +16,16 @@ func TestMap(t *testing.T) {
 	buf.Write(append(utils.PutStringRecord("this is a sentence"), utils.PutStringRecord("this is another sentence")...))
 	inputFile := input.NewValue(&buf)
 	m := FlatMap{
-		function: func(str types.RawInput) []types.RawOutput {
+		Function: func(str types.RawInput) []types.RawOutput {
 			return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 		},
 		inputFile: inputFile,
 	}
-	if err := m.do(0, 1); err != nil {
+	if err := m.Do(0, 1); err != nil {
 		t.Errorf("do() error: %s", err)
 		return
 	}
-	_, output := m.getOutputKV()
+	_, output := m.GetOutputKV()
 
 	res := ""
 
