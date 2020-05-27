@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/in4it/gomap/pkg/cloudproviders/aws"
@@ -67,6 +68,8 @@ func main() {
 		panic(err)
 	}
 
+	s.SetLaunchSpecificationUserdata(getUserdata(executable, logGroup, region, cmd))
+
 	spotInstanceRequestId, err := s.LaunchSpotInstance()
 
 	if err != nil {
@@ -95,4 +98,21 @@ func main() {
 	fmt.Printf("See cloudwatch logs for details\n")
 
 	return
+}
+
+func getUserdata(executable, logGroup, region, cmd string) string {
+	// set userdata
+	executableName := filepath.Base(executable)
+	userdata := `#!/bin/bash
+		wget -q https://github.com/in4it/tee2cloudwatch/releases/download/0.0.3/tee2cloudwatch-linux-amd64
+		wget -q https://github.com/in4it/gomap/releases/download/0.0.1-rc1/launch-agent-linux-amd64
+		chmod +x tee2cloudwatch-linux-amd64 launch-agent-linux-amd64
+		exec > >(./tee2cloudwatch-linux-amd64 -logGroup ` + logGroup + ` -region ` + region + `) 2>&1
+			./launch-agent-linux-amd64 -s3get ` + executable + `
+			chmod +x ` + executableName + `
+			` + cmd + `
+			echo "done! shutting down"
+			sudo shutdown now
+				`
+	return userdata
 }
