@@ -112,7 +112,6 @@ func getUserdata(executable, logGroup, region, cmd string) string {
 			chmod +x ` + executableName + `
 			` + cmd + `
 			echo "done! shutting down"
-			sudo shutdown now
-				`
+			sudo shutdown now`
 	return userdata
 }

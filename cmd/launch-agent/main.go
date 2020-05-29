@@ -47,11 +47,15 @@ func main() {
 		panic(err)
 	}
 
+	defer outputFile.Close()
+
 	writer := bufio.NewWriter(outputFile)
 	scanner, err := s3.GetObjectScanner(prefix)
 	if err != nil {
 		panic(err)
 	}
+
+	scanner.Split(bufio.ScanBytes)
 
 	for scanner.Scan() {
 		_, err := writer.Write(scanner.Bytes())
@@ -59,5 +63,8 @@ func main() {
 			panic(err)
 		}
 	}
-
+	err = writer.Flush()
+	if err != nil {
+		panic(err)
+	}
 }
