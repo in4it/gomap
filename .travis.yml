@@ -1,0 +1,12 @@
+language: go
+go:
+  - 1.14
+os:
+  - linux
+sudo: false
+install: true
+script:
+  - env GO111MODULE=on go build cmd/launch/*.go
+  - env GO111MODULE=on go build cmd/launch-agent/*.go
+  - env GO111MODULE=on go build cmd/wordcount/*.go
+  - env GO111MODULE=on go test -v ./...
