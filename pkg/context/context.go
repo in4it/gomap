@@ -14,14 +14,18 @@ import (
 	"github.com/in4it/gomap/pkg/utils"
 )
 
-type InputFile struct {
+type inputFile struct {
 	name string
 }
 
+// New creates a new gomap context
+// This is the first command you typically run to initialize gomap
 func New() *Context {
 	return &Context{}
 }
 
+// GetError will return an error if there was an error, otherwise
+// it'll return nil
 func (c *Context) GetError() error {
 	return c.err
 }
@@ -40,31 +44,31 @@ func (c *Context) isFileOrDirectory(name string) (bool, error) {
 	return false, fmt.Errorf("File/Dir ormat not recognized")
 }
 
-func (c *Context) getS3Files() ([]InputFile, string, string, error) {
+func (c *Context) getS3Files() ([]inputFile, string, string, error) {
 	var (
-		files []InputFile
+		files []inputFile
 	)
 	if strings.HasSuffix(c.input, "/") {
 		// s3 path is a directory
 		bucket, prefix, err := utils.GetS3BucketNameAndKey(c.input)
 		if err != nil {
-			return []InputFile{}, "", "", err
+			return []inputFile{}, "", "", err
 		}
 		region, err := aws.GetBucketRegion(bucket)
 		if err != nil {
-			return []InputFile{}, "", "", err
+			return []inputFile{}, "", "", err
 		}
 		s3 := aws.NewS3(aws.S3Config{Region: region, Bucket: bucket})
 		list, err := s3.ListObjects(prefix[1:]) // remove leading "/"
 		if err != nil {
-			return []InputFile{}, "", "", err
+			return []inputFile{}, "", "", err
 		}
-		files = make([]InputFile, len(list))
+		files = make([]inputFile, len(list))
 		for k := range list {
 			files[k].name = "s3://" + bucket + "/" + list[k]
 		}
 	} else {
-		files = []InputFile{{name: c.input}}
+		files = []inputFile{{name: c.input}}
 	}
 	switch c.inputType {
 	case "file":
@@ -75,7 +79,7 @@ func (c *Context) getS3Files() ([]InputFile, string, string, error) {
 		panic("file type not recognized")
 	}
 }
-func (c *Context) getLocalFiles() ([]InputFile, string, error) {
+func (c *Context) getLocalFiles() ([]inputFile, string, error) {
 	var (
 		isDirectory bool
 		inputDir    string
@@ -83,24 +87,24 @@ func (c *Context) getLocalFiles() ([]InputFile, string, error) {
 		fileInfo    []os.FileInfo
 	)
 	if isDirectory, err = c.isFileOrDirectory(c.input); err != nil {
-		return []InputFile{}, inputDir, err
+		return []inputFile{}, inputDir, err
 	}
 	if isDirectory {
 		inputDir = c.input
 		fileInfo, err = ioutil.ReadDir(c.input)
 		if err != nil {
-			return []InputFile{}, inputDir, err
+			return []inputFile{}, inputDir, err
 		}
 		return toInputFile(fileInfo), inputDir, err
 	}
 	// not a directory
-	return []InputFile{{name: c.input}}, inputDir, nil
+	return []inputFile{{name: c.input}}, inputDir, nil
 }
 
-func (c *Context) getFiles() ([]InputFile, string, string, interface{}, error) {
+func (c *Context) getFiles() ([]inputFile, string, string, interface{}, error) {
 	var (
 		err      error
-		files    []InputFile
+		files    []inputFile
 		inputDir string
 	)
 
@@ -108,17 +112,18 @@ func (c *Context) getFiles() ([]InputFile, string, string, interface{}, error) {
 	if len(c.input) > 5 && c.input[:5] == "s3://" {
 		var inputType string
 		if files, inputDir, inputType, err = c.getS3Files(); err != nil {
-			return []InputFile{}, "", inputType, c.inputSchema, err
+			return []inputFile{}, "", inputType, c.inputSchema, err
 		}
 		return files, inputDir, inputType, c.inputSchema, nil
 	}
 	// handle local files
 	if files, inputDir, err = c.getLocalFiles(); err != nil {
-		return []InputFile{}, "", c.inputType, c.inputSchema, err
+		return []inputFile{}, "", c.inputType, c.inputSchema, err
 	}
 	return files, inputDir, c.inputType, c.inputSchema, nil
 }
 
+// Run executes preceding Map/MapKV/ReduceByKey/... actions
 func (c *Context) Run() *RunOutput {
 	var (
 		runOutput         *RunOutput
@@ -257,8 +262,8 @@ func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Co
 	return nil
 }
 
-func toInputFile(fileInfo []os.FileInfo) []InputFile {
-	ret := make([]InputFile, len(fileInfo))
+func toInputFile(fileInfo []os.FileInfo) []inputFile {
+	ret := make([]inputFile, len(fileInfo))
 	for k := range fileInfo {
 		ret[k].name = fileInfo[k].Name()
 	}

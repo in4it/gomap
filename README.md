@@ -1,4 +1,7 @@
 # gomap
+[![Travis Status for in4it/gomap](https://travis-ci.org/in4it/gomap.svg?branch=master)](https://travis-ci.org/in4it/gomap)
+[![godoc for in4it/gomap](https://godoc.org/github.com/in4it/gomap?status.svg)](http://godoc.org/github.com/in4it/gomap)
+
 Run your MapReduce workloads as a single binary on a single machine with multiple CPUs and high memory. Pricing of a lot of small machines vs heavy machines is the same on most cloud providers.
 
 # Run gomap on AWS
