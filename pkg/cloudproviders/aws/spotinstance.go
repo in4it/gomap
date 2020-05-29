@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -87,25 +86,13 @@ func (s *SpotInstance) SetLaunchSpecification(input []byte) error {
 
 	fmt.Printf("Using AMI ID: %s (ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server)\n", aws.StringValue(s.config.launchSpecification.ImageId))
 
-	// set userdata
-	executableName := filepath.Base(s.config.Executable)
-	userdata := `#!/bin/bash -e
-				wget https://github.com/in4it/tee2cloudwatch/releases/download/0.0.3/tee2cloudwatch-linux-amd64
-				chmod +x tee2cloudwatch-linux-amd64
-				exec > >(./tee2cloudwatch-linux-amd64 -logGroup ` + s.config.LogGroup + ` -region ` + s.config.Region + `) 2>&1
-				  sudo apt-get update -qq && sudo apt-get install awscli -y -qq
-				  aws s3 cp ` + s.config.Executable + ` ` + executableName + `
-				  chmod +x ` + executableName + `
-				  ` + s.config.Cmd + `
-				  echo "done! shutting down"
-				  sudo shutdown now
-				`
-	userdataEnc := base64.StdEncoding.EncodeToString([]byte(userdata))
-
-	s.config.launchSpecification.UserData = aws.String(userdataEnc)
-
 	return nil
 }
+func (s *SpotInstance) SetLaunchSpecificationUserdata(userdata string) {
+	userdataEnc := base64.StdEncoding.EncodeToString([]byte(userdata))
+	s.config.launchSpecification.UserData = aws.String(userdataEnc)
+}
+
 func (s *SpotInstance) GetSpotInstanceRequestStatus(requestId string) (string, string, error) {
 	var i int
 	for i = 1; i < 5; i++ {
