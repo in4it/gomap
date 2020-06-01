@@ -131,12 +131,10 @@ func (c *Context) Run() *RunOutput {
 		waitForStep       sync.WaitGroup
 		filenameToProcess []input.FileToProcess
 	)
-
 	// get list of files
 	files, inputDir, fileType, schema, err := c.getFiles()
 	if err != nil {
-		c.err = err
-		return runOutput
+		return &RunOutput{err: err}
 	}
 	// initialize variables
 	runOutput = &RunOutput{}
@@ -172,7 +170,7 @@ func (c *Context) Run() *RunOutput {
 
 	for _, contexts := range runOutput.Contexts {
 		if contexts.err != nil {
-			c.err = err
+			runOutput.err = err
 			return runOutput
 		}
 	}
@@ -193,8 +191,6 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 	inputFile = input.NewInput(fileToProcess)
 	if err = inputFile.Init(); err != nil {
 		contexts[partition].err = err
-		// TODO: provide better error control
-		panic(err)
 		return
 	}
 
