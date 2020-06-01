@@ -75,7 +75,8 @@ func (r *RunOutput) GetKV() ([]types.RawOutput, []types.RawOutput) {
 // The function passed to foreach is executed for every unique key.
 func (r *RunOutput) Foreach(fn types.ForeachFunction) {
 	for _, context := range r.Contexts {
-		if context.outputType == "kv" {
+		switch context.outputType {
+		case "kv":
 			for {
 				moreRecords, keyRecord, err := utils.ReadRecord(&context.outputKey)
 				if err != nil {
@@ -93,6 +94,19 @@ func (r *RunOutput) Foreach(fn types.ForeachFunction) {
 				}
 				fn(keyRecord, valueRecord)
 			}
+		case "value":
+			for {
+				moreValueRecords, valueRecord, err := utils.ReadRecord(&context.outputValue)
+				if err != nil {
+					panic(err)
+				}
+				if !moreValueRecords {
+					break
+				}
+				fn([]byte{}, valueRecord)
+			}
+		default:
+			panic("OutputType not recognized")
 		}
 	}
 }

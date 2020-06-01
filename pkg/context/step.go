@@ -32,6 +32,10 @@ func copySteps(input []dataset.Step) []dataset.Step {
 			res[k] = &dataset.Map{
 				Function: v.GetFunction().(types.MapFunction),
 			}
+		case "*dataset.Filter":
+			res[k] = &dataset.Filter{
+				Function: v.GetFunction().(types.FilterFunction),
+			}
 		default:
 			panic(fmt.Errorf("Unrecognized type: %s", reflect.TypeOf(v)))
 		}

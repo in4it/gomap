@@ -335,3 +335,29 @@ func TestParquetPartition(t *testing.T) {
 		t.Errorf("Expected element not found")
 	}
 }
+
+func TestFilter(t *testing.T) {
+	c := New()
+	c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
+		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
+	}).Filter(func(input types.RawInput) bool {
+		if string(input) == "this" {
+			return true
+		}
+		return false
+	}).Run().Foreach(func(key, value types.RawOutput) {
+		found := false
+		if string(value) == "this" {
+			found = true
+		}
+		if !found {
+			t.Errorf("Not found: %s: %s", string(key), string(value))
+			return
+		}
+	})
+
+	if c.err != nil {
+		t.Errorf("Error: %s", c.err)
+	}
+
+}
