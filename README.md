@@ -91,7 +91,9 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+    //
     // you can now use string(key) and lines ([]ParquetLine)
+    //
 	})
 
 	if c.err != nil {
@@ -101,6 +103,7 @@ func main() {
 
 ## Current implemented functions
 | Function | Description |
+| -------- | ----------- |
 | Map | Transform a value |
 | FlatMap | Transform and flatten a value into a slice |
 | MapToKV | Transform a map to a key value pair |
