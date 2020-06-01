@@ -8,7 +8,7 @@ import (
 	"github.com/in4it/gomap/pkg/types"
 )
 
-func (d *Context) AddStep(s dataset.Step) {
+func (d *Context) addStep(s dataset.Step) {
 	d.steps = append(d.steps, s)
 }
 
