@@ -21,7 +21,7 @@ import (
 
 ## WordCount Example
 
-```
+```go
 package main
 
 import (
@@ -48,7 +48,7 @@ func main() {
 ```
 
 ## Parquet example
-```
+```go
 package main
 
 import (
