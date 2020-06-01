@@ -33,3 +33,10 @@ func (c *Context) ReduceByKey(fn types.ReduceByKeyFunction) *Context {
 	c.addStep(dataset.NewReduceByKey(fn))
 	return c
 }
+
+// Filter expects a function with one argument (the value) and outputs true or false
+// Only values with true are kept in the returning dataset
+func (c *Context) Filter(fn types.FilterFunction) *Context {
+	c.addStep(dataset.NewFilter(fn))
+	return c
+}
