@@ -329,6 +329,7 @@ func TestParquetPartition(t *testing.T) {
 
 	if c.err != nil {
 		t.Errorf("Error: %s", c.err)
+		return
 	}
 
 	if !found {
