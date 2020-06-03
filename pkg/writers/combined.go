@@ -26,3 +26,22 @@ func (c *CombinedWriter) Read(p []byte) (n int, err error) {
 func (c *CombinedWriter) Write(p []byte) (n int, err error) {
 	return 0, fmt.Errorf("CombinedWriter doesn't support direct writes")
 }
+func (c *CombinedWriter) Close() error {
+	for _, v := range c.readers {
+		if err := v.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func (c *CombinedWriter) Cleanup() error {
+	for _, v := range c.readers {
+		if err := v.Cleanup(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func (c *CombinedWriter) New() (WriterReader, error) {
+	return NewCombinedWriter(c.readers), nil
+}

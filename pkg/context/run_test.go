@@ -8,6 +8,7 @@ import (
 
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/in4it/gomap/pkg/utils"
+	"github.com/in4it/gomap/pkg/writers"
 )
 
 func TestRunSingleFile(t *testing.T) {
@@ -362,4 +363,48 @@ func TestFilter(t *testing.T) {
 		t.Errorf("Error: %s", c.err)
 	}
 
+}
+
+func TestSingleFileSpillToDisk(t *testing.T) {
+
+	expected := map[string]string{
+		"is":       "2",
+		"a":        "1",
+		"sentence": "2",
+		"another":  "1",
+		"this":     "2",
+	}
+
+	c := New()
+	writer, err := writers.NewMemoryAndDiskWriter(10)
+	if err != nil {
+		t.Errorf("Couldn't initialize new memory and disk writer: %s", err)
+	}
+	c.SetConfig(Config{
+		bufferWriter: writer,
+	})
+	fmt.Printf("Writing to tmp dir: %s\n", os.TempDir())
+	c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
+		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
+	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
+		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
+	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
+		return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
+	}).Run().Foreach(func(key, value types.RawOutput) {
+		found := false
+		for k1, v1 := range expected {
+			if k1 == string(key) && v1 == string(value) {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("Not found: %s: %s", string(key), string(value))
+			return
+		}
+	})
+
+	if c.err != nil {
+		t.Errorf("Error: %s", c.err)
+		return
+	}
 }

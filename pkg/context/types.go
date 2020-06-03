@@ -5,8 +5,12 @@ import (
 	"github.com/in4it/gomap/pkg/writers"
 )
 
+type Config struct {
+	bufferWriter writers.WriterReader
+}
+
 type Context struct {
-	config      string
+	config      Config
 	err         error
 	input       string
 	inputType   string

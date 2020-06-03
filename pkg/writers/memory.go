@@ -16,3 +16,13 @@ func (m *MemoryWriter) Read(p []byte) (n int, err error) {
 func (m *MemoryWriter) Write(p []byte) (n int, err error) {
 	return m.buffer.Write(p)
 }
+
+func (m *MemoryWriter) Close() error {
+	return nil // not implemented
+}
+func (m *MemoryWriter) Cleanup() error {
+	return nil // not implemented
+}
+func (m *MemoryWriter) New() (WriterReader, error) {
+	return NewMemoryWriter(), nil
+}

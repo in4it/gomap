@@ -51,6 +51,12 @@ func (r *RunOutput) Get() []types.RawOutput {
 				ret = append(ret, record)
 			}
 		}
+		if context.outputKey != nil {
+			context.outputKey.Cleanup()
+		}
+		if context.outputValue != nil {
+			context.outputValue.Cleanup()
+		}
 	}
 	return ret
 }
@@ -88,6 +94,12 @@ func (r *RunOutput) GetKV() ([]types.RawOutput, []types.RawOutput) {
 				}
 				values = append(values, record)
 			}
+		}
+		if context.outputKey != nil {
+			context.outputKey.Cleanup()
+		}
+		if context.outputValue != nil {
+			context.outputValue.Cleanup()
 		}
 	}
 	return keys, values
@@ -138,6 +150,12 @@ func (r *RunOutput) Foreach(fn types.ForeachFunction) {
 			// do nothing
 		default:
 			panic("OutputType '" + context.outputType + "' not recognized")
+		}
+		if context.outputKey != nil {
+			context.outputKey.Cleanup()
+		}
+		if context.outputValue != nil {
+			context.outputValue.Cleanup()
 		}
 	}
 }

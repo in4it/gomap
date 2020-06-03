@@ -5,6 +5,9 @@ type Writer interface {
 }
 type Reader interface {
 	Read(p []byte) (n int, err error)
+	Close() error
+	Cleanup() error
+	New() (WriterReader, error)
 }
 
 type WriterReader interface {

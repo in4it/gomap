@@ -29,6 +29,12 @@ func New() *Context {
 func (c *Context) GetError() error {
 	return c.err
 }
+
+// SetConfig takes a Config type to set a different configuration
+func (c *Context) SetConfig(conf Config) {
+	c.config = conf
+}
+
 func (c *Context) isFileOrDirectory(name string) (bool, error) {
 	fi, err := os.Stat(name)
 	if err != nil {
@@ -144,8 +150,9 @@ func (c *Context) Run() *RunOutput {
 	// loop over files, prepare to run different contexts in goroutines
 	for k, f := range files {
 		runOutput.Contexts[k] = &Context{
-			steps: copySteps(c.steps),
-			input: c.input,
+			steps:  copySteps(c.steps),
+			input:  c.input,
+			config: c.config,
 		}
 		if inputDir != "" {
 			filenameToProcess[k] = input.NewFileToProcess(inputDir+"/"+f.name, fileType, schema)
@@ -196,8 +203,16 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 
 	for _, step := range contexts[partition].steps {
 		step.SetInput(inputFile)
-		keyWriter = writers.NewMemoryWriter()
-		valueWriter = writers.NewMemoryWriter()
+		if keyWriter != nil {
+			keyWriter.Cleanup()
+		}
+		if valueWriter != nil {
+			valueWriter.Cleanup()
+		}
+		if keyWriter, valueWriter, err = newKeyValueBufferWriter(contexts[partition].config.bufferWriter); err != nil {
+			contexts[partition].err = err
+			return
+		}
 		step.SetOutputKV(keyWriter, valueWriter)
 
 		if err := step.Do(partition, len(contexts)); err != nil {
@@ -211,10 +226,10 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 
 		if step.GetStepType() == "reducebykey" {
 			// make buffers visible to all contexts
+			keyWriter.Close()
+			valueWriter.Close()
 			contexts[partition].outputKey = keyWriter
 			contexts[partition].outputValue = valueWriter
-			keyWriter = nil
-			valueWriter = nil
 			if err := handleReduceSync(partition, waitForStep, contexts, &inputFile, step); err != nil {
 				contexts[partition].err = err
 				return
@@ -236,6 +251,21 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 	contexts[partition].outputValue = valueWriter
 	contexts[partition].outputType = inputFile.GetType()
 	return
+}
+
+func newKeyValueBufferWriter(bufferWriterReaderFromConfig writers.WriterReader) (writers.WriterReader, writers.WriterReader, error) {
+	if bufferWriterReaderFromConfig == nil {
+		return writers.NewMemoryWriter(), writers.NewMemoryWriter(), nil
+	}
+	k, err := bufferWriterReaderFromConfig.New()
+	if err != nil {
+		return nil, nil, err
+	}
+	v, err := bufferWriterReaderFromConfig.New()
+	if err != nil {
+		return nil, nil, err
+	}
+	return k, v, nil
 }
 
 func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Context, inputFile *input.Input, step dataset.Step) error {

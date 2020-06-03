@@ -1,7 +1,6 @@
 package dataset
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 
@@ -12,10 +11,10 @@ import (
 )
 
 func TestMap(t *testing.T) {
-	var buf bytes.Buffer
+	buf := writers.NewMemoryWriter()
 
 	buf.Write(append(utils.PutStringRecord("this is a sentence"), utils.PutStringRecord("this is another sentence")...))
-	inputFile := input.NewValue(&buf)
+	inputFile := input.NewValue(buf)
 	m := FlatMap{
 		Function: func(str types.RawInput) []types.RawOutput {
 			return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
