@@ -35,6 +35,7 @@ func (m *Filter) Do(partition, totalPartitions int) error {
 }
 
 func (m *Filter) GetOutputKV() (writers.WriterReader, writers.WriterReader) {
+	m.output.Close()
 	return nil, m.output
 }
 func (m *Filter) GetOutputType() string {

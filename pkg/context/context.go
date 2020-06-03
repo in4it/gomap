@@ -177,7 +177,7 @@ func (c *Context) Run() *RunOutput {
 
 	for _, contexts := range runOutput.Contexts {
 		if contexts.err != nil {
-			runOutput.err = err
+			runOutput.err = contexts.err
 			return runOutput
 		}
 	}
@@ -223,11 +223,8 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 		inputFile.Close()
 		// gather input
 		keyWriter, valueWriter = step.GetOutputKV()
-
 		if step.GetStepType() == "reducebykey" {
 			// make buffers visible to all contexts
-			keyWriter.Close()
-			valueWriter.Close()
 			contexts[partition].outputKey = keyWriter
 			contexts[partition].outputValue = valueWriter
 			if err := handleReduceSync(partition, waitForStep, contexts, &inputFile, step); err != nil {
@@ -257,6 +254,7 @@ func newKeyValueBufferWriter(bufferWriterReaderFromConfig writers.WriterReader) 
 	if bufferWriterReaderFromConfig == nil {
 		return writers.NewMemoryWriter(), writers.NewMemoryWriter(), nil
 	}
+	bufferWriterReaderFromConfig.Cleanup()
 	k, err := bufferWriterReaderFromConfig.New()
 	if err != nil {
 		return nil, nil, err

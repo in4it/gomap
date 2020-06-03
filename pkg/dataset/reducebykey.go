@@ -53,6 +53,8 @@ func (m *ReduceByKey) GetOutput() bytes.Buffer {
 	return bytes.Buffer{}
 }
 func (m *ReduceByKey) GetOutputKV() (writers.WriterReader, writers.WriterReader) {
+	m.outputKey.Close()
+	m.outputValue.Close()
 	return m.outputKey, m.outputValue
 }
 func (m *ReduceByKey) GetOutputType() string {

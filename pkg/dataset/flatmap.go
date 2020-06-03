@@ -35,6 +35,7 @@ func (m *FlatMap) Do(partition, totalPartitions int) error {
 }
 
 func (m *FlatMap) GetOutputKV() (writers.WriterReader, writers.WriterReader) {
+	m.output.Close()
 	return nil, m.output
 }
 func (m *FlatMap) GetOutputType() string {

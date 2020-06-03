@@ -63,7 +63,7 @@ func (m *MemoryAndDiskWriter) Close() error {
 	return nil
 }
 func (m *MemoryAndDiskWriter) Cleanup() error {
-	m.tmpFile.Close()
+	//m.tmpFile.Close()
 	return os.Remove(m.tmpFile.Name())
 }
 func (m *MemoryAndDiskWriter) New() (WriterReader, error) {

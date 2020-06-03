@@ -36,6 +36,8 @@ func (m *MapToKV) Do(partition, totalPartitions int) error {
 }
 
 func (m *MapToKV) GetOutputKV() (writers.WriterReader, writers.WriterReader) {
+	m.outputKey.Close()
+	m.outputValue.Close()
 	return m.outputKey, m.outputValue
 }
 func (m *MapToKV) GetOutputType() string {

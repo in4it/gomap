@@ -13,9 +13,13 @@ import (
 
 func TestRunSingleFile(t *testing.T) {
 	c := New()
-	output := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
+	output, err := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
 		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).Run().Get()
+
+	if err != nil {
+		t.Errorf("Error: %s", err)
+	}
 
 	if c.err != nil {
 		t.Errorf("Error: %s", c.err)
@@ -44,12 +48,16 @@ type MapObject struct {
 
 func TestMapObject(t *testing.T) {
 	c := New()
-	output := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
+	output, err := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
 		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).Map(func(input types.RawInput) types.RawOutput {
 		rawEncode := utils.RawEncode(MapObject{Word: string(input), WordUpper: strings.ToUpper(string(input))})
 		return rawEncode
 	}).Run().Get()
+
+	if err != nil {
+		t.Errorf("Error: %s", err)
+	}
 
 	if c.err != nil {
 		t.Errorf("Error: %s", c.err)
@@ -79,7 +87,7 @@ func TestMapObject(t *testing.T) {
 
 func TestRunSingleFileKV(t *testing.T) {
 	c := New()
-	keys, values := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
+	keys, values, err := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
 		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
@@ -87,6 +95,9 @@ func TestRunSingleFileKV(t *testing.T) {
 		return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
 	}).Run().GetKV()
 
+	if err != nil {
+		t.Errorf("Error: %s", err)
+	}
 	if c.err != nil {
 		t.Errorf("Error: %s", c.err)
 		return
@@ -124,7 +135,7 @@ func TestRunSingleFileKV(t *testing.T) {
 
 func TestMultipleFiles(t *testing.T) {
 	c := New()
-	keys, values := c.Read("testdata/multi-file-sentences").FlatMap(func(str types.RawInput) []types.RawOutput {
+	keys, values, err := c.Read("testdata/multi-file-sentences").FlatMap(func(str types.RawInput) []types.RawOutput {
 		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
@@ -133,6 +144,10 @@ func TestMultipleFiles(t *testing.T) {
 	}).Run().GetKV()
 	if c.err != nil {
 		t.Errorf("Error1: %s", c.err)
+	}
+
+	if err != nil {
+		t.Errorf("Error: %s", err)
 	}
 
 	output := make(map[string]string)
@@ -212,7 +227,7 @@ func TestRunParquetFile(t *testing.T) {
 
 	for scenario, inputFile := range scenarios {
 		c := New()
-		keys, values := c.ReadParquet(inputFile, new(ParquetLine)).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
+		keys, values, err := c.ReadParquet(inputFile, new(ParquetLine)).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 			var line ParquetLine
 			err := utils.RawDecode(input, &line)
 			if err != nil {
@@ -223,6 +238,9 @@ func TestRunParquetFile(t *testing.T) {
 			return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
 		}).Run().GetKV()
 
+		if err != nil {
+			t.Errorf("Error: %s", err)
+		}
 		if c.err != nil {
 			t.Errorf("Error: %s", c.err)
 		}
@@ -341,7 +359,7 @@ func TestParquetPartition(t *testing.T) {
 
 func TestFilter(t *testing.T) {
 	c := New()
-	c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
+	err := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
 		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).Filter(func(input types.RawInput) bool {
 		if string(input) == "this" {
@@ -358,6 +376,9 @@ func TestFilter(t *testing.T) {
 			return
 		}
 	})
+	if err != nil {
+		t.Errorf("Error: %s", err)
+	}
 
 	if c.err != nil {
 		t.Errorf("Error: %s", c.err)
@@ -384,7 +405,60 @@ func TestSingleFileSpillToDisk(t *testing.T) {
 		bufferWriter: writer,
 	})
 	fmt.Printf("Writing to tmp dir: %s\n", os.TempDir())
-	c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
+	err = c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
+		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
+	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
+		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
+	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
+		return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
+	}).Run().Foreach(func(key, value types.RawOutput) {
+		//fmt.Printf("'%s':'%s'\n", string(key), string(value))
+		found := false
+		for k1, v1 := range expected {
+			if k1 == string(key) && v1 == string(value) {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("Not found: %s: %s", string(key), string(value))
+			return
+		}
+	})
+	if err != nil {
+		t.Errorf("Error: %s", err)
+		return
+	}
+	if c.err != nil {
+		t.Errorf("Error: %s", c.err)
+		return
+	}
+}
+func TestMultipleFilesWithSpillToDisk(t *testing.T) {
+
+	expected := map[string]string{
+		"is":              "3",
+		"sentence":        "3",
+		"another":         "4",
+		"more":            "9",
+		"file":            "2",
+		"sentences":       "1",
+		"(sentence1.txt)": "1",
+		"(sentence2.txt)": "1",
+		"(sentence3.txt)": "1",
+		"this":            "3",
+		"a":               "1",
+		"in":              "2",
+	}
+	c := New()
+	writer, err := writers.NewMemoryAndDiskWriter(10)
+	if err != nil {
+		t.Errorf("Couldn't initialize new memory and disk writer: %s", err)
+	}
+	c.SetConfig(Config{
+		bufferWriter: writer,
+	})
+
+	c.Read("testdata/multi-file-sentences").FlatMap(func(str types.RawInput) []types.RawOutput {
 		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
@@ -402,9 +476,8 @@ func TestSingleFileSpillToDisk(t *testing.T) {
 			return
 		}
 	})
-
 	if c.err != nil {
-		t.Errorf("Error: %s", c.err)
+		t.Errorf("Error1: %s", c.err)
 		return
 	}
 }
