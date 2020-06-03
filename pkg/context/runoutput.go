@@ -41,7 +41,7 @@ func (r *RunOutput) Get() []types.RawOutput {
 	for _, context := range r.Contexts {
 		if context.outputType == "value" {
 			for {
-				moreRecords, record, err := utils.ReadRecord(&context.outputValue)
+				moreRecords, record, err := utils.ReadRecord(context.outputValue)
 				if err != nil {
 					panic(err)
 				}
@@ -69,7 +69,7 @@ func (r *RunOutput) GetKV() ([]types.RawOutput, []types.RawOutput) {
 	for _, context := range r.Contexts {
 		if context.outputType == "kv" {
 			for {
-				moreRecords, record, err := utils.ReadRecord(&context.outputKey)
+				moreRecords, record, err := utils.ReadRecord(context.outputKey)
 				if err != nil {
 					panic(err)
 				}
@@ -79,7 +79,7 @@ func (r *RunOutput) GetKV() ([]types.RawOutput, []types.RawOutput) {
 				keys = append(keys, record)
 			}
 			for {
-				moreRecords, record, err := utils.ReadRecord(&context.outputValue)
+				moreRecords, record, err := utils.ReadRecord(context.outputValue)
 				if err != nil {
 					panic(err)
 				}
@@ -107,14 +107,14 @@ func (r *RunOutput) Foreach(fn types.ForeachFunction) {
 		switch context.outputType {
 		case "kv":
 			for {
-				moreRecords, keyRecord, err := utils.ReadRecord(&context.outputKey)
+				moreRecords, keyRecord, err := utils.ReadRecord(context.outputKey)
 				if err != nil {
 					panic(err)
 				}
 				if !moreRecords {
 					break
 				}
-				moreValueRecords, valueRecord, err := utils.ReadRecord(&context.outputValue)
+				moreValueRecords, valueRecord, err := utils.ReadRecord(context.outputValue)
 				if err != nil {
 					panic(err)
 				}
@@ -125,7 +125,7 @@ func (r *RunOutput) Foreach(fn types.ForeachFunction) {
 			}
 		case "value":
 			for {
-				moreValueRecords, valueRecord, err := utils.ReadRecord(&context.outputValue)
+				moreValueRecords, valueRecord, err := utils.ReadRecord(context.outputValue)
 				if err != nil {
 					panic(err)
 				}

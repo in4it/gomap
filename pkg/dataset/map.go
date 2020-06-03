@@ -1,17 +1,16 @@
 package dataset
 
 import (
-	"bytes"
-
 	"github.com/in4it/gomap/pkg/input"
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/in4it/gomap/pkg/utils"
+	"github.com/in4it/gomap/pkg/writers"
 )
 
 type Map struct {
 	Function  types.MapFunction
 	inputFile input.Input
-	output    bytes.Buffer
+	output    writers.WriterReader
 	invoked   int
 }
 
@@ -33,8 +32,8 @@ func (m *Map) Do(partition, totalPartitions int) error {
 	return nil
 }
 
-func (m *Map) GetOutputKV() (bytes.Buffer, bytes.Buffer) {
-	return bytes.Buffer{}, m.output
+func (m *Map) GetOutputKV() (writers.WriterReader, writers.WriterReader) {
+	return nil, m.output
 }
 func (m *Map) GetOutputType() string {
 	return "value"
@@ -54,4 +53,7 @@ func (m *Map) GetFunction() interface{} {
 }
 func (m *Map) SetInput(inputFile input.Input) {
 	m.inputFile = inputFile
+}
+func (m *Map) SetOutputKV(keyWriter writers.WriterReader, valueWriter writers.WriterReader) {
+	m.output = valueWriter
 }

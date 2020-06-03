@@ -88,6 +88,7 @@ func TestRunSingleFileKV(t *testing.T) {
 
 	if c.err != nil {
 		t.Errorf("Error: %s", c.err)
+		return
 	}
 
 	output := make(map[string]string)

@@ -1,19 +1,19 @@
 package dataset
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/in4it/gomap/pkg/input"
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/in4it/gomap/pkg/utils"
+	"github.com/in4it/gomap/pkg/writers"
 )
 
 func TestFilter(t *testing.T) {
-	var buf bytes.Buffer
+	buf := writers.NewMemoryWriter()
 
 	buf.Write(append(utils.PutStringRecord("this is a sentence"), utils.PutStringRecord("this is another sentence")...))
-	inputData := input.NewValue(&buf)
+	inputData := input.NewValue(buf)
 	m := Filter{
 		Function: func(str types.RawInput) bool {
 			if string(str) == "this is a sentence" {
@@ -22,6 +22,7 @@ func TestFilter(t *testing.T) {
 			return false
 		},
 		inputFile: inputData,
+		output:    writers.NewMemoryWriter(),
 	}
 	if err := m.Do(0, 1); err != nil {
 		t.Errorf("do() error: %s", err)
@@ -32,7 +33,7 @@ func TestFilter(t *testing.T) {
 	res := ""
 
 	for {
-		moreRecords, record, err := utils.ReadRecord(&output)
+		moreRecords, record, err := utils.ReadRecord(output)
 		if err != nil {
 			panic(err)
 		}

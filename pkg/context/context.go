@@ -1,7 +1,6 @@
 package context
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"github.com/in4it/gomap/pkg/dataset"
 	"github.com/in4it/gomap/pkg/input"
 	"github.com/in4it/gomap/pkg/utils"
+	"github.com/in4it/gomap/pkg/writers"
 )
 
 type inputFile struct {
@@ -180,8 +180,8 @@ func (c *Context) Run() *RunOutput {
 
 func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *sync.WaitGroup, waitForStep *sync.WaitGroup, contexts []*Context) {
 	var (
-		bufferKey   bytes.Buffer
-		bufferValue bytes.Buffer
+		keyWriter   writers.WriterReader
+		valueWriter writers.WriterReader
 		err         error
 		inputFile   input.Input
 	)
@@ -196,6 +196,9 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 
 	for _, step := range contexts[partition].steps {
 		step.SetInput(inputFile)
+		keyWriter = writers.NewMemoryWriter()
+		valueWriter = writers.NewMemoryWriter()
+		step.SetOutputKV(keyWriter, valueWriter)
 
 		if err := step.Do(partition, len(contexts)); err != nil {
 			contexts[partition].err = err
@@ -204,14 +207,14 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 		// file can be closed now
 		inputFile.Close()
 		// gather input
-		bufferKey, bufferValue = step.GetOutputKV()
+		keyWriter, valueWriter = step.GetOutputKV()
 
 		if step.GetStepType() == "reducebykey" {
 			// make buffers visible to all contexts
-			contexts[partition].outputKey = bufferKey
-			contexts[partition].outputValue = bufferValue
-			bufferKey = bytes.Buffer{}
-			bufferValue = bytes.Buffer{}
+			contexts[partition].outputKey = keyWriter
+			contexts[partition].outputValue = valueWriter
+			keyWriter = nil
+			valueWriter = nil
 			if err := handleReduceSync(partition, waitForStep, contexts, &inputFile, step); err != nil {
 				contexts[partition].err = err
 				return
@@ -219,18 +222,18 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 			if partition != 0 {
 				return
 			}
-			bufferKey, bufferValue = step.GetOutputKV()
+			keyWriter, valueWriter = step.GetOutputKV()
 		}
 		// set inputfile to new input for next step
 		switch step.GetOutputType() {
 		case "value":
-			inputFile = input.NewValue(&bufferValue)
+			inputFile = input.NewValue(valueWriter)
 		case "kv":
-			inputFile = input.NewKeyValue(&bufferKey, &bufferValue)
+			inputFile = input.NewKeyValue(keyWriter, valueWriter)
 		}
 	}
-	contexts[partition].outputKey = bufferKey
-	contexts[partition].outputValue = bufferValue
+	contexts[partition].outputKey = keyWriter
+	contexts[partition].outputValue = valueWriter
 	contexts[partition].outputType = inputFile.GetType()
 	return
 }
@@ -238,19 +241,17 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Context, inputFile *input.Input, step dataset.Step) error {
 	waitForStep.Done()
 	waitForStep.Wait()
-	var (
-		bufferKey   bytes.Buffer
-		bufferValue bytes.Buffer
-	)
 	// now all the reducebykey steps should be finished
 	if partition == 0 {
+		keyReaders := make([]writers.Reader, len(contexts))
+		valueReaders := make([]writers.Reader, len(contexts))
 		for k := range contexts {
-			bufferKey.Write(contexts[k].outputKey.Bytes())
-			bufferValue.Write(contexts[k].outputValue.Bytes())
-			contexts[k].outputKey = bytes.Buffer{}
-			contexts[k].outputValue = bytes.Buffer{}
+			keyReaders[k] = contexts[k].outputKey
+			valueReaders[k] = contexts[k].outputValue
 		}
-		step.SetInput(input.NewKeyValue(&bufferKey, &bufferValue))
+		keyReader := writers.NewCombinedWriter(keyReaders)
+		valueReader := writers.NewCombinedWriter(valueReaders)
+		step.SetInput(input.NewKeyValue(keyReader, valueReader))
 		if err := step.Do(partition, len(contexts)); err != nil {
 			return err
 		}

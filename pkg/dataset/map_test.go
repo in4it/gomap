@@ -8,6 +8,7 @@ import (
 	"github.com/in4it/gomap/pkg/input"
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/in4it/gomap/pkg/utils"
+	"github.com/in4it/gomap/pkg/writers"
 )
 
 func TestMap(t *testing.T) {
@@ -20,6 +21,7 @@ func TestMap(t *testing.T) {
 			return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 		},
 		inputFile: inputFile,
+		output:    writers.NewMemoryWriter(),
 	}
 	if err := m.Do(0, 1); err != nil {
 		t.Errorf("do() error: %s", err)
@@ -30,7 +32,7 @@ func TestMap(t *testing.T) {
 	res := ""
 
 	for {
-		moreRecords, record, err := utils.ReadRecord(&output)
+		moreRecords, record, err := utils.ReadRecord(output)
 		if err != nil {
 			panic(err)
 		}

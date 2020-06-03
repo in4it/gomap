@@ -1,17 +1,16 @@
 package dataset
 
 import (
-	"bytes"
-
 	"github.com/in4it/gomap/pkg/input"
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/in4it/gomap/pkg/utils"
+	"github.com/in4it/gomap/pkg/writers"
 )
 
 type Filter struct {
 	Function  types.FilterFunction
 	inputFile input.Input
-	output    bytes.Buffer
+	output    writers.WriterReader
 	invoked   int
 }
 
@@ -35,8 +34,8 @@ func (m *Filter) Do(partition, totalPartitions int) error {
 	return nil
 }
 
-func (m *Filter) GetOutputKV() (bytes.Buffer, bytes.Buffer) {
-	return bytes.Buffer{}, m.output
+func (m *Filter) GetOutputKV() (writers.WriterReader, writers.WriterReader) {
+	return nil, m.output
 }
 func (m *Filter) GetOutputType() string {
 	return "value"
@@ -50,6 +49,9 @@ func (m *Filter) GetFunction() interface{} {
 }
 func (m *Filter) SetInput(inputFile input.Input) {
 	m.inputFile = inputFile
+}
+func (m *Filter) SetOutputKV(keyWriter writers.WriterReader, valueWriter writers.WriterReader) {
+	m.output = valueWriter
 }
 
 func (m *Filter) GetStats() StepStats {

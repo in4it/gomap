@@ -1,18 +1,17 @@
 package dataset
 
 import (
-	"bytes"
-
 	"github.com/in4it/gomap/pkg/input"
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/in4it/gomap/pkg/utils"
+	"github.com/in4it/gomap/pkg/writers"
 )
 
 type MapToKV struct {
 	Function    types.MapToKVFunction
 	inputFile   input.Input
-	outputKey   bytes.Buffer
-	outputValue bytes.Buffer
+	outputKey   writers.WriterReader
+	outputValue writers.WriterReader
 	invoked     int
 }
 
@@ -36,7 +35,7 @@ func (m *MapToKV) Do(partition, totalPartitions int) error {
 	return nil
 }
 
-func (m *MapToKV) GetOutputKV() (bytes.Buffer, bytes.Buffer) {
+func (m *MapToKV) GetOutputKV() (writers.WriterReader, writers.WriterReader) {
 	return m.outputKey, m.outputValue
 }
 func (m *MapToKV) GetOutputType() string {
@@ -56,4 +55,8 @@ func (m *MapToKV) GetFunction() interface{} {
 }
 func (m *MapToKV) SetInput(inputFile input.Input) {
 	m.inputFile = inputFile
+}
+func (m *MapToKV) SetOutputKV(keyWriter writers.WriterReader, valueWriter writers.WriterReader) {
+	m.outputKey = keyWriter
+	m.outputValue = valueWriter
 }

@@ -1,13 +1,13 @@
 package utils
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"strconv"
 
 	"github.com/in4it/gomap/pkg/types"
+	"github.com/in4it/gomap/pkg/writers"
 	"github.com/vmihailenco/msgpack"
 )
 
@@ -70,7 +70,7 @@ func GetRecordLength(data []byte) uint32 {
 	return binary.LittleEndian.Uint32(data)
 }
 
-func ReadRecord(input *bytes.Buffer) (bool, []byte, error) {
+func ReadRecord(input writers.Reader) (bool, []byte, error) {
 	header := make([]byte, UTILS_HEADERLENGTH)
 	n, err := input.Read(header)
 	if err != nil {
