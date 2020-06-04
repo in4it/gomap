@@ -21,7 +21,7 @@ func (i *Value) Init() error {
 	return nil
 }
 func (i *Value) Close() {
-
+	i.bufferValue.Cleanup()
 }
 func (i *Value) Scan() bool {
 

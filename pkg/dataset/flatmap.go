@@ -57,5 +57,6 @@ func (m *FlatMap) SetInput(inputFile input.Input) {
 	m.inputFile = inputFile
 }
 func (m *FlatMap) SetOutputKV(keyWriter writers.WriterReader, valueWriter writers.WriterReader) {
+	keyWriter.Cleanup()
 	m.output = valueWriter
 }

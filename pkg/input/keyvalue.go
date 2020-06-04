@@ -27,6 +27,8 @@ func (i *KeyValue) Init() error {
 	return nil
 }
 func (i *KeyValue) Close() {
+	i.bufferKey.Cleanup()
+	i.bufferValue.Cleanup()
 }
 func (i *KeyValue) Scan() bool {
 	return i.readRecordFromKey() && i.readRecordFromValue()

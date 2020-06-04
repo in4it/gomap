@@ -52,6 +52,7 @@ func (m *Filter) SetInput(inputFile input.Input) {
 	m.inputFile = inputFile
 }
 func (m *Filter) SetOutputKV(keyWriter writers.WriterReader, valueWriter writers.WriterReader) {
+	keyWriter.Cleanup()
 	m.output = valueWriter
 }
 

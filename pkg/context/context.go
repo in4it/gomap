@@ -203,20 +203,17 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 
 	for _, step := range contexts[partition].steps {
 		step.SetInput(inputFile)
-		if keyWriter != nil {
-			keyWriter.Cleanup()
-		}
-		if valueWriter != nil {
-			valueWriter.Cleanup()
-		}
+		//cleanupWriters(keyWriter, valueWriter)
 		if keyWriter, valueWriter, err = newKeyValueBufferWriter(contexts[partition].config.bufferWriter); err != nil {
 			contexts[partition].err = err
+			cleanupWriters(keyWriter, valueWriter)
 			return
 		}
 		step.SetOutputKV(keyWriter, valueWriter)
 
 		if err := step.Do(partition, len(contexts)); err != nil {
 			contexts[partition].err = err
+			cleanupWriters(keyWriter, valueWriter)
 			return
 		}
 		// file can be closed now
@@ -229,6 +226,7 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 			contexts[partition].outputValue = valueWriter
 			if err := handleReduceSync(partition, waitForStep, contexts, &inputFile, step); err != nil {
 				contexts[partition].err = err
+				cleanupWriters(keyWriter, valueWriter)
 				return
 			}
 			if partition != 0 {
@@ -280,7 +278,8 @@ func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Co
 		keyReader := writers.NewCombinedWriter(keyReaders)
 		valueReader := writers.NewCombinedWriter(valueReaders)
 		// initialize input
-		step.SetInput(input.NewKeyValue(keyReader, valueReader))
+		input := input.NewKeyValue(keyReader, valueReader)
+		step.SetInput(input)
 		// initialize output
 		keyWriter, valueWriter, err := newKeyValueBufferWriter(contexts[partition].config.bufferWriter)
 		if err != nil {
@@ -291,6 +290,8 @@ func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Co
 		if err := step.Do(partition, len(contexts)); err != nil {
 			return err
 		}
+		// cleanup
+		input.Close()
 	}
 	return nil
 }
@@ -301,4 +302,13 @@ func toInputFile(fileInfo []os.FileInfo) []inputFile {
 		ret[k].name = fileInfo[k].Name()
 	}
 	return ret
+}
+
+func cleanupWriters(keyWriter, valueWriter writers.WriterReader) {
+	if keyWriter != nil {
+		keyWriter.Cleanup()
+	}
+	if valueWriter != nil {
+		valueWriter.Cleanup()
+	}
 }

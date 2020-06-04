@@ -13,6 +13,7 @@ type MemoryAndDiskWriter struct {
 	maxLength uint32
 	buffer    bytes.Buffer
 	tmpFile   *os.File
+	readonly  bool
 }
 
 func NewMemoryAndDiskWriter(maxLength uint32) (*MemoryAndDiskWriter, error) {
@@ -42,6 +43,9 @@ func (m *MemoryAndDiskWriter) Read(p []byte) (n int, err error) {
 	return m.tmpFile.Read(p)
 }
 func (m *MemoryAndDiskWriter) Write(p []byte) (n int, err error) {
+	if m.readonly {
+		return 0, fmt.Errorf("Can't write to buffer: writer is marked as readonly")
+	}
 	m.length += uint32(len(p))
 	if m.length >= m.maxLength { // length >= maxlength: spill to disk
 		return m.tmpFile.Write(p)
@@ -53,17 +57,22 @@ func (m *MemoryAndDiskWriter) Close() error {
 	filename := m.tmpFile.Name()
 	var err error
 	if err = m.tmpFile.Close(); err != nil {
-		return err
+		return fmt.Errorf("Close() error: %s", err)
 	}
 
 	if m.tmpFile, err = os.Open(filename); err != nil {
-		return fmt.Errorf("Can't write temporary file: %s", err)
+		return fmt.Errorf("Can't open temporary file for reading: %s", err)
 	}
+
+	m.readonly = true
 
 	return nil
 }
 func (m *MemoryAndDiskWriter) Cleanup() error {
-	//m.tmpFile.Close()
+	err := m.tmpFile.Close()
+	if err != nil {
+		return err
+	}
 	return os.Remove(m.tmpFile.Name())
 }
 func (m *MemoryAndDiskWriter) New() (WriterReader, error) {
