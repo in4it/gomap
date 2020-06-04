@@ -412,7 +412,6 @@ func TestSingleFileSpillToDisk(t *testing.T) {
 	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
 		return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
 	}).Run().Foreach(func(key, value types.RawOutput) {
-		//fmt.Printf("'%s':'%s'\n", string(key), string(value))
 		found := false
 		for k1, v1 := range expected {
 			if k1 == string(key) && v1 == string(value) {
@@ -458,7 +457,7 @@ func TestMultipleFilesWithSpillToDisk(t *testing.T) {
 		bufferWriter: writer,
 	})
 
-	c.Read("testdata/multi-file-sentences").FlatMap(func(str types.RawInput) []types.RawOutput {
+	err = c.Read("testdata/multi-file-sentences").FlatMap(func(str types.RawInput) []types.RawOutput {
 		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
@@ -478,6 +477,10 @@ func TestMultipleFilesWithSpillToDisk(t *testing.T) {
 	})
 	if c.err != nil {
 		t.Errorf("Error1: %s", c.err)
+		return
+	}
+	if err != nil {
+		t.Errorf("Error: %s", err)
 		return
 	}
 }

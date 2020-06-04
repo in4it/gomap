@@ -279,7 +279,15 @@ func handleReduceSync(partition int, waitForStep *sync.WaitGroup, contexts []*Co
 		}
 		keyReader := writers.NewCombinedWriter(keyReaders)
 		valueReader := writers.NewCombinedWriter(valueReaders)
+		// initialize input
 		step.SetInput(input.NewKeyValue(keyReader, valueReader))
+		// initialize output
+		keyWriter, valueWriter, err := newKeyValueBufferWriter(contexts[partition].config.bufferWriter)
+		if err != nil {
+			return err
+		}
+		step.SetOutputKV(keyWriter, valueWriter)
+		// run reduce again
 		if err := step.Do(partition, len(contexts)); err != nil {
 			return err
 		}
