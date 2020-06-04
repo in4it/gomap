@@ -203,7 +203,6 @@ func runFile(partition int, fileToProcess input.FileToProcess, waitForContext *s
 
 	for _, step := range contexts[partition].steps {
 		step.SetInput(inputFile)
-		//cleanupWriters(keyWriter, valueWriter)
 		if keyWriter, valueWriter, err = newKeyValueBufferWriter(contexts[partition].config.bufferWriter); err != nil {
 			contexts[partition].err = err
 			cleanupWriters(keyWriter, valueWriter)
