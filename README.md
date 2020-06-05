@@ -104,14 +104,16 @@ func main() {
 
 ## Memory usage and spill to disk
 If you don't want to keep the full memory set in memory, you can specify a buffer limit. Between steps (Map, FlatMap, ReduceByKey, ...), a buffer is kept. By configuring a different writer, you can influence the memory usage.
+
+### Default writer (MemoryWriter)
 ```go
-	// default bufferWriter
 	c := New()
 	c.SetConfig(Config{
 		bufferWriter: writers.NewMemoryWriter(),
 	})
 ```
 
+### Memory and Disk Writer (MemoryAndDiskWriter)
 ```go
 	c := New()
 	c.SetConfig(Config{
