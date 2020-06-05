@@ -1,20 +1,19 @@
 package input
 
 import (
-	"bytes"
-
 	"github.com/in4it/gomap/pkg/utils"
+	"github.com/in4it/gomap/pkg/writers"
 )
 
 type Value struct {
-	bufferValue     *bytes.Buffer
+	bufferValue     writers.WriterReader
 	valueRecordSize uint32
 	valueRecordErr  error
 	keyRecord       []byte
 	valueRecord     []byte
 }
 
-func NewValue(value *bytes.Buffer) Input {
+func NewValue(value writers.WriterReader) Input {
 	return &Value{bufferValue: value}
 }
 
@@ -22,7 +21,7 @@ func (i *Value) Init() error {
 	return nil
 }
 func (i *Value) Close() {
-
+	i.bufferValue.Cleanup()
 }
 func (i *Value) Scan() bool {
 

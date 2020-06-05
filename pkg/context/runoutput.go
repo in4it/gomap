@@ -14,34 +14,30 @@ type RunOutput struct {
 }
 
 // Print prints the output using fmt.Printf
-func (r *RunOutput) Print() {
+func (r *RunOutput) Print() error {
 	if r.err != nil {
-		if len(r.Contexts) == 0 || r.Contexts[0] == nil {
-			panic(r.err)
-		}
-		r.Contexts[0].err = r.err
-		return
+		return r.err
 	}
-	key, value := r.GetKV()
+	key, value, err := r.GetKV()
+	if err != nil {
+		return err
+	}
 	for k := range key {
 		fmt.Printf("%s: %s\n", string(key[k]), value[k])
 	}
+	return nil
 }
 
 // Get retrieves all the values from the output
-func (r *RunOutput) Get() []types.RawOutput {
+func (r *RunOutput) Get() ([]types.RawOutput, error) {
 	if r.err != nil {
-		if len(r.Contexts) == 0 || r.Contexts[0] == nil {
-			panic(r.err)
-		}
-		r.Contexts[0].err = r.err
-		return []types.RawOutput{}
+		return []types.RawOutput{}, r.err
 	}
 	ret := []types.RawOutput{}
 	for _, context := range r.Contexts {
 		if context.outputType == "value" {
 			for {
-				moreRecords, record, err := utils.ReadRecord(&context.outputValue)
+				moreRecords, record, err := utils.ReadRecord(context.outputValue)
 				if err != nil {
 					panic(err)
 				}
@@ -51,25 +47,27 @@ func (r *RunOutput) Get() []types.RawOutput {
 				ret = append(ret, record)
 			}
 		}
+		if context.outputKey != nil {
+			context.outputKey.Cleanup()
+		}
+		if context.outputValue != nil {
+			context.outputValue.Cleanup()
+		}
 	}
-	return ret
+	return ret, nil
 }
 
 // GetKV retrieves all key/value pairs from the output
-func (r *RunOutput) GetKV() ([]types.RawOutput, []types.RawOutput) {
+func (r *RunOutput) GetKV() ([]types.RawOutput, []types.RawOutput, error) {
 	if r.err != nil {
-		if len(r.Contexts) == 0 || r.Contexts[0] == nil {
-			panic(r.err)
-		}
-		r.Contexts[0].err = r.err
-		return []types.RawOutput{}, []types.RawOutput{}
+		return []types.RawOutput{}, []types.RawOutput{}, r.err
 	}
 	keys := []types.RawOutput{}
 	values := []types.RawOutput{}
 	for _, context := range r.Contexts {
 		if context.outputType == "kv" {
 			for {
-				moreRecords, record, err := utils.ReadRecord(&context.outputKey)
+				moreRecords, record, err := utils.ReadRecord(context.outputKey)
 				if err != nil {
 					panic(err)
 				}
@@ -79,7 +77,7 @@ func (r *RunOutput) GetKV() ([]types.RawOutput, []types.RawOutput) {
 				keys = append(keys, record)
 			}
 			for {
-				moreRecords, record, err := utils.ReadRecord(&context.outputValue)
+				moreRecords, record, err := utils.ReadRecord(context.outputValue)
 				if err != nil {
 					panic(err)
 				}
@@ -89,32 +87,34 @@ func (r *RunOutput) GetKV() ([]types.RawOutput, []types.RawOutput) {
 				values = append(values, record)
 			}
 		}
+		if context.outputKey != nil {
+			context.outputKey.Cleanup()
+		}
+		if context.outputValue != nil {
+			context.outputValue.Cleanup()
+		}
 	}
-	return keys, values
+	return keys, values, nil
 }
 
 // Foreach lets you pass a function to iterate over the output.
 // The function passed to foreach is executed for every unique key.
-func (r *RunOutput) Foreach(fn types.ForeachFunction) {
+func (r *RunOutput) Foreach(fn types.ForeachFunction) error {
 	if r.err != nil {
-		if len(r.Contexts) == 0 || r.Contexts[0] == nil {
-			panic(r.err)
-		}
-		r.Contexts[0].err = r.err
-		return
+		return r.err
 	}
 	for _, context := range r.Contexts {
 		switch context.outputType {
 		case "kv":
 			for {
-				moreRecords, keyRecord, err := utils.ReadRecord(&context.outputKey)
+				moreRecords, keyRecord, err := utils.ReadRecord(context.outputKey)
 				if err != nil {
 					panic(err)
 				}
 				if !moreRecords {
 					break
 				}
-				moreValueRecords, valueRecord, err := utils.ReadRecord(&context.outputValue)
+				moreValueRecords, valueRecord, err := utils.ReadRecord(context.outputValue)
 				if err != nil {
 					panic(err)
 				}
@@ -125,7 +125,7 @@ func (r *RunOutput) Foreach(fn types.ForeachFunction) {
 			}
 		case "value":
 			for {
-				moreValueRecords, valueRecord, err := utils.ReadRecord(&context.outputValue)
+				moreValueRecords, valueRecord, err := utils.ReadRecord(context.outputValue)
 				if err != nil {
 					panic(err)
 				}
@@ -139,5 +139,12 @@ func (r *RunOutput) Foreach(fn types.ForeachFunction) {
 		default:
 			panic("OutputType '" + context.outputType + "' not recognized")
 		}
+		if context.outputKey != nil {
+			context.outputKey.Cleanup()
+		}
+		if context.outputValue != nil {
+			context.outputValue.Cleanup()
+		}
 	}
+	return nil
 }

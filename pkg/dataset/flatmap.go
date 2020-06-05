@@ -1,17 +1,16 @@
 package dataset
 
 import (
-	"bytes"
-
 	"github.com/in4it/gomap/pkg/input"
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/in4it/gomap/pkg/utils"
+	"github.com/in4it/gomap/pkg/writers"
 )
 
 type FlatMap struct {
 	Function  types.FlatMapFunction
 	inputFile input.Input
-	output    bytes.Buffer
+	output    writers.WriterReader
 	invoked   int
 }
 
@@ -35,8 +34,9 @@ func (m *FlatMap) Do(partition, totalPartitions int) error {
 	return nil
 }
 
-func (m *FlatMap) GetOutputKV() (bytes.Buffer, bytes.Buffer) {
-	return bytes.Buffer{}, m.output
+func (m *FlatMap) GetOutputKV() (writers.WriterReader, writers.WriterReader) {
+	m.output.Close()
+	return nil, m.output
 }
 func (m *FlatMap) GetOutputType() string {
 	return "value"
@@ -55,4 +55,8 @@ func (m *FlatMap) GetFunction() interface{} {
 }
 func (m *FlatMap) SetInput(inputFile input.Input) {
 	m.inputFile = inputFile
+}
+func (m *FlatMap) SetOutputKV(keyWriter writers.WriterReader, valueWriter writers.WriterReader) {
+	keyWriter.Cleanup()
+	m.output = valueWriter
 }

@@ -1,19 +1,22 @@
 package context
 
 import (
-	"bytes"
-
 	"github.com/in4it/gomap/pkg/dataset"
+	"github.com/in4it/gomap/pkg/writers"
 )
 
+type Config struct {
+	bufferWriter writers.WriterReader
+}
+
 type Context struct {
-	config      string
+	config      Config
 	err         error
 	input       string
 	inputType   string
 	inputSchema interface{}
 	steps       []dataset.Step
-	outputKey   bytes.Buffer
-	outputValue bytes.Buffer
+	outputKey   writers.Reader
+	outputValue writers.Reader
 	outputType  string
 }

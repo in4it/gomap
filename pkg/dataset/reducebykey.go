@@ -6,13 +6,14 @@ import (
 	"github.com/in4it/gomap/pkg/input"
 	"github.com/in4it/gomap/pkg/types"
 	"github.com/in4it/gomap/pkg/utils"
+	"github.com/in4it/gomap/pkg/writers"
 )
 
 type ReduceByKey struct {
 	Function    types.ReduceByKeyFunction
 	inputFile   input.Input
-	outputKey   bytes.Buffer
-	outputValue bytes.Buffer
+	outputKey   writers.WriterReader
+	outputValue writers.WriterReader
 	invoked     int
 }
 
@@ -22,9 +23,6 @@ func NewReduceByKey(fn types.ReduceByKeyFunction) *ReduceByKey {
 	}
 }
 func (m *ReduceByKey) Do(partition, totalPartitions int) error {
-	m.outputKey = bytes.Buffer{}
-	m.outputValue = bytes.Buffer{}
-
 	reduced := make(map[string][]byte)
 
 	for m.inputFile.Scan() {
@@ -54,7 +52,9 @@ func (m *ReduceByKey) Do(partition, totalPartitions int) error {
 func (m *ReduceByKey) GetOutput() bytes.Buffer {
 	return bytes.Buffer{}
 }
-func (m *ReduceByKey) GetOutputKV() (bytes.Buffer, bytes.Buffer) {
+func (m *ReduceByKey) GetOutputKV() (writers.WriterReader, writers.WriterReader) {
+	m.outputKey.Close()
+	m.outputValue.Close()
 	return m.outputKey, m.outputValue
 }
 func (m *ReduceByKey) GetOutputType() string {
@@ -73,4 +73,8 @@ func (m *ReduceByKey) GetFunction() interface{} {
 }
 func (m *ReduceByKey) SetInput(inputFile input.Input) {
 	m.inputFile = inputFile
+}
+func (m *ReduceByKey) SetOutputKV(keyWriter writers.WriterReader, valueWriter writers.WriterReader) {
+	m.outputKey = keyWriter
+	m.outputValue = valueWriter
 }
