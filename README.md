@@ -33,15 +33,16 @@ import (
 // Print a wordcount of an input file
 func main() {
 	c := context.New()
-	c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
+	err := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
 		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
 	}).ReduceByKey(func(a, b types.RawInput) types.RawOutput {
 		return utils.IntToRawOutput(utils.RawInputToInt(a) + utils.RawInputToInt(b))
 	}).Run().Print()
-	if c.GetError() != nil {
-		fmt.Printf("Error: %s", c.GetError())
+	
+	if err != nil {
+		fmt.Printf("Error: %s", err)
 		os.Exit(1)
 	}
 }
@@ -66,7 +67,7 @@ type ParquetLine struct {
 // Print a wordcount of an input file
 func main() {
 	c := context.New()
-	c.ReadParquet("s3://bucket/directory/", new(ParquetLine)).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
+	err := c.ReadParquet("s3://bucket/directory/", new(ParquetLine)).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		var line ParquetLine
 		err := utils.RawDecode(input, &line)
 		if err != nil {
@@ -96,9 +97,29 @@ func main() {
     //
 	})
 
-	if c.err != nil {
+	if err != nil {
 		panic(c.err)
 	}
+```
+
+## Memory usage and spill to disk
+If you don't want to keep the full memory set in memory, you can specify a buffer limit. Between steps (Map, FlatMap, ReduceByKey, ...), a buffer is kept. By configuring a different writer, you can influence the memory usage.
+
+### Default writer (MemoryWriter)
+```go
+	c := New()
+	c.SetConfig(Config{
+		bufferWriter: writers.NewMemoryWriter(),
+	})
+```
+
+### Memory and Disk Writer (MemoryAndDiskWriter)
+```go
+	c := New()
+	c.SetConfig(Config{
+		// argument expects bytes. after 5 MB, the buffer will start spilling to disk. 
+		bufferWriter: writers.NewMemoryAndDiskWriter(1024 /* kb */ * 1024 /* mb */ * 5), 
+	})
 ```
 
 ## Current implemented functions
@@ -109,6 +130,7 @@ func main() {
 | MapToKV | Transform a map to a key value pair |
 | ReduceByKey | Group unique keys and apply a reduce function |
 | Foreach | Loop over the output of unique keys in a key value result |
+| Filter | Filter values |
 | Print | Print output |
 | Get | Get output values |
 | GetKV | Get output keys and values |

@@ -8,6 +8,8 @@ import (
 	"os"
 )
 
+// MemoryAndDiskWriter can be used to write to disk once a threshold (in bytes) is reached
+// You can use this if you're experiencing Out Of Memory errors when your data set is to big
 type MemoryAndDiskWriter struct {
 	length    uint32
 	maxLength uint32
@@ -16,7 +18,13 @@ type MemoryAndDiskWriter struct {
 	readonly  bool
 }
 
-func NewMemoryAndDiskWriter(maxLength uint32) (*MemoryAndDiskWriter, error) {
+func NewMemoryAndDiskWriter(maxLength uint32) *MemoryAndDiskWriter {
+	return &MemoryAndDiskWriter{
+		maxLength: maxLength,
+	}
+}
+
+func newMemoryAndDiskWriter(maxLength uint32) (*MemoryAndDiskWriter, error) {
 	file, err := ioutil.TempFile("", "gomap.*.dat")
 	if err != nil {
 		return nil, fmt.Errorf("Can't write temporary file: %s", err)
@@ -69,12 +77,15 @@ func (m *MemoryAndDiskWriter) Close() error {
 	return nil
 }
 func (m *MemoryAndDiskWriter) Cleanup() error {
-	err := m.tmpFile.Close()
-	if err != nil {
-		return err
+	if m.tmpFile != nil {
+		err := m.tmpFile.Close()
+		if err != nil {
+			return err
+		}
+		return os.Remove(m.tmpFile.Name())
 	}
-	return os.Remove(m.tmpFile.Name())
+	return nil
 }
 func (m *MemoryAndDiskWriter) New() (WriterReader, error) {
-	return NewMemoryAndDiskWriter(m.maxLength)
+	return newMemoryAndDiskWriter(m.maxLength)
 }

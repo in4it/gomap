@@ -5,6 +5,7 @@ import (
 	"io"
 )
 
+// CombinedWriter can combine multiple writers together. This is used internally to reduce from 5 partitions to 1 (combining 5 writers into 1)
 type CombinedWriter struct {
 	readers []Reader
 }

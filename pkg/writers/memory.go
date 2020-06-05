@@ -2,6 +2,8 @@ package writers
 
 import "bytes"
 
+// MemoryWriter is the default writer.
+// It uses bytes.Buffer to buffer all the data in memory
 type MemoryWriter struct {
 	buffer bytes.Buffer
 }

@@ -251,7 +251,6 @@ func newKeyValueBufferWriter(bufferWriterReaderFromConfig writers.WriterReader) 
 	if bufferWriterReaderFromConfig == nil {
 		return writers.NewMemoryWriter(), writers.NewMemoryWriter(), nil
 	}
-	bufferWriterReaderFromConfig.Cleanup()
 	k, err := bufferWriterReaderFromConfig.New()
 	if err != nil {
 		return nil, nil, err
