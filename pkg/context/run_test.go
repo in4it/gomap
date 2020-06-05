@@ -397,15 +397,13 @@ func TestSingleFileSpillToDisk(t *testing.T) {
 	}
 
 	c := New()
-	writer, err := writers.NewMemoryAndDiskWriter(10)
-	if err != nil {
-		t.Errorf("Couldn't initialize new memory and disk writer: %s", err)
-	}
+
 	c.SetConfig(Config{
-		bufferWriter: writer,
+		bufferWriter: writers.NewMemoryAndDiskWriter(10),
 	})
+
 	fmt.Printf("Writing to tmp dir: %s\n", os.TempDir())
-	err = c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
+	err := c.Read("testdata/sentences.txt").FlatMap(func(str types.RawInput) []types.RawOutput {
 		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")
@@ -449,15 +447,11 @@ func TestMultipleFilesWithSpillToDisk(t *testing.T) {
 		"in":              "2",
 	}
 	c := New()
-	writer, err := writers.NewMemoryAndDiskWriter(10)
-	if err != nil {
-		t.Errorf("Couldn't initialize new memory and disk writer: %s", err)
-	}
 	c.SetConfig(Config{
-		bufferWriter: writer,
+		bufferWriter: writers.NewMemoryAndDiskWriter(10),
 	})
 
-	err = c.Read("testdata/multi-file-sentences").FlatMap(func(str types.RawInput) []types.RawOutput {
+	err := c.Read("testdata/multi-file-sentences").FlatMap(func(str types.RawInput) []types.RawOutput {
 		return utils.StringArrayToRawOutput(strings.Split(string(str), " "))
 	}).MapToKV(func(input types.RawInput) (types.RawOutput, types.RawOutput) {
 		return utils.RawInputToRawOutput(input), utils.StringToRawOutput("1")

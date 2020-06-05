@@ -15,7 +15,7 @@ func TestMap(t *testing.T) {
 		"hello world test2": {100, 10},
 	}
 	for str, maxlen := range tests {
-		m, err := NewMemoryAndDiskWriter(maxlen[0])
+		m, err := newMemoryAndDiskWriter(maxlen[0])
 		if err != nil {
 			t.Errorf("Initialize error: %s", err)
 			return
