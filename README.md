@@ -130,6 +130,7 @@ If you don't want to keep the full memory set in memory, you can specify a buffe
 | MapToKV | Transform a map to a key value pair |
 | ReduceByKey | Group unique keys and apply a reduce function |
 | Foreach | Loop over the output of unique keys in a key value result |
+| Filter | Filter values |
 | Print | Print output |
 | Get | Get output values |
 | GetKV | Get output keys and values |
